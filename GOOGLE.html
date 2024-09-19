@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAYUKH GOOGLE</title>
+    <link rel="icon" href="google.jpg" type="image/x-icon">
+     <img src="I.jpg" class="video" width="250" height="250">
+   
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .video{
+            position: absolute;
+            bottom:250px;
+            left:75%;
+         }
+        body {
+            background-image: url('102.jfif');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-position: center;
+            color: #333;
+        }
+        h1, p, title {
+            color: royalblue;
+            text-align: center;
+        }
+        .top-center-text {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: royalblue;
+        }
+        .spaced-image {
+            margin-top: 50px;
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        .search-container {
+            padding: 20px;
+            text-align: center;
+        }
+        .search-box {
+            width: 50%;
+            max-width: 400px;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: black;
+            color: white;
+            box-shadow: 0 0 5px #333;
+        }
+        .name-list {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            display: none;
+            background-color: black;
+            color: white;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: left;
+        }
+        .name-item {
+            padding: 5px;
+            font-size: 18px;
+        }
+        .highlight {
+            background-color: yellow;
+            color: black;
+        }
+        .slide-screen {
+            position: fixed;
+            top: 0;
+            right: -300px; /* Ensure it’s out of view */
+            width: 300px;
+            height: 100%;
+            background-color:transparent;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+            transition: right 0.3s ease-in-out;
+            z-index: 1000;
+        }
+        .slide-screen.show {
+            right: 0;
+        }
+        .button-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .button-container button {
+            font-size: 16px;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            background-color: royalblue;
+            color: white;
+            border-radius: 200000px;
+        }
+        /* Slide screens */
+        .slide-screen1, .info-screen {
+            position: fixed;
+            top: 0;
+            left: -600px;
+            width: 300px;
+            height: 100%;
+            background-color: transparent;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+            transition: left 0.3s ease-in-out;
+            z-index: 1000;
+        }
+        .slide-screen1.show, .info-screen.show {
+            left: 0;
+        }
+        .slide-screen1.show{
+
+            right: 0;
+
+        }
+        .close-btn, #calculatorBtn, #clock{
+             display: block;
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: royalblue;
+            border-radius: 15px;
+        }
+        .info-screen {
+            width: 400px;
+            height: 300px;
+            background-color: black;
+        }
+        .content {
+            padding: 20px;
+
+        }
+        .ft {
+            position: absolute;
+            top: 0%;
+            left: 80%;
+            border-radius: 20px;
+            background-color: silver;
+
+        }
+        #closeBtn, #youtubeBtn, #Btn1, #Btn2, #Btn3, #Btn4, #Btn5 {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: royalblue;
+            border-radius: 15px;
+        }
+         .search-container {
+            padding: 20px;
+            text-align: center;
+        }
+        .search-box {
+            width: 50%;
+            max-width: 400px;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: black;
+            color: white;
+            box-shadow: 0 0 5px #333;
+            l
+        }
+        .search-results {
+            width: 50%;
+            max-width: 400px;
+            margin: 20px auto;
+            background-color: black;
+            color: white;
+            border: 1px solid #333;
+            border-radius: 5px;
+            display: none;
+        }
+        .search-results button {
+            width: 100%;
+            background-color: black;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            text-align: left;
+        }
+    </style>
+        <div class="top-center-text">Welcome to the Mayukh Google</div>
+    <div style="display: flex; justify-content: center; height: 20vh;">
+        <img src="google.png" class="spaced-image" width="350" height="250">
+           </div>
+    <div class="search-container">
+</head>
+<body>
+    <div class="button-container">
+    <button id="threeDotBtn">⋮</button>
+    <button id="infoBtn">i</button>
+    <button id="shareBtn">Share</button>
+</div>
+ <div class="search-container">
+        <input type="text" id="searchBox" class="search-box" placeholder="Search...">
+        <div id="searchResults" class="search-results"></div>
+    </div>
+<!-- Three Dot Slide Screen -->
+<div id="threeDotScreen" class="slide-screen1">
+    <div class="content">
+        <button class="close-btn" id="closeThreeDot">Close</button>
+        <button id="calculatorBtn">Go to Calculator</button>
+        <button id="clock">Go to Clock</button>
+
+    </div>
+</div>
+
+<!-- Info Slide Screen -->
+<div id="infoScreen" class="info-screen">
+    <div class="content">
+        <button class="close-btn" id="closeInfo">Close</button>
+        <p>This website is copyrighted by M.B.E <img src="MBE.jpg" class="mbe" height="100" width="100">made by Mayukh Batabyal. If you have any  problem about this website, you can tell me on mayukhbatabyal123.gmail.com </p>
+    </div>
+</div>
+
+<script>
+            const searchBox = document.getElementById('searchBox');
+        const searchResults = document.getElementById('searchResults');
+
+        const items = [
+            { name: 'Clock', id: 'clockBtn' },
+            { name: 'Calculator', id: 'calculatorBtn' },
+            { name: 'Game', id: 'gameBtn' },
+            { name: 'Symbols of Atoms', id: 'symbol' },
+            { name: 'Map', id: 'map' },
+            
+            { name: 'Go to YouTube', id: 'youtubeBtn' },
+            { name: 'Go to Mayukh Youtube channel', id: 'Btn1' },
+            { name: 'Go to Google', id: 'Btn2' },
+            { name: 'Go to Google Map', id: 'Btn3' },
+            { name: 'Go to Google Gmai', id: 'Btn4' },
+            { name: 'Go to Input Types In HTML', id: 'Btn5' },
+            { name: 'HTML Codes', id: 'code' },
+        ];
+
+        searchBox.addEventListener('input', function() {
+            const searchTerm = searchBox.value.toLowerCase();
+            searchResults.innerHTML = '';
+            searchResults.style.display = 'none';
+            
+            if (searchTerm) {
+                items.forEach(item => {
+                    if (item.name.toLowerCase().includes(searchTerm)) {
+                        const resultButton = document.createElement('button');
+                        resultButton.textContent = item.name;
+                        resultButton.addEventListener('click', () => {
+                            document.getElementById(item.id).click();
+                        });
+                        searchResults.appendChild(resultButton);
+                        searchResults.style.display = 'block';
+                    }
+                });
+            }
+        });
+
+    // Three Dot Button Functionality
+    document.getElementById('threeDotBtn').addEventListener('click', function() {
+        document.getElementById('threeDotScreen').classList.add('show');
+    });
+    document.getElementById('closeThreeDot').addEventListener('click', function() {
+        document.getElementById('threeDotScreen').classList.remove('show');
+    });
+    document.getElementById('calculatorBtn').addEventListener('click', function() {
+        window.location.href = 'calculator.html';
+
+    });
+     document.getElementById('clock').addEventListener('click', function() {
+        window.location.href = 'clock.html';
+    });
+
+    // Info Button Functionality
+    document.getElementById('infoBtn').addEventListener('click', function() {
+        document.getElementById('infoScreen').classList.add('show');
+    });
+    document.getElementById('closeInfo').addEventListener('click', function() {
+        document.getElementById('infoScreen').classList.remove('show');
+    });
+
+    // Share Button Functionality
+    document.getElementById('shareBtn').addEventListener('click', function() {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const url = isMobile ? "https://wa.me/?text=Check%20out%20this%20website:%20mbegoogle.000.pe"
+                             : "https://web.whatsapp.com/send?text=Check%20out%20this%20website:%20mbegoogle.000.pe";
+        window.open(url, '_blank');
+    });
+</script>
+
+ 
+        <button class="ft" id="ft">Click For More Features</button>
+        <div id="slideScreen" class="slide-screen">
+            <div class="content">
+                <button id="closeBtn">Close</button>
+                <button id="youtubeBtn">Go to YouTube</button>
+                <button id="Btn1">Go to Mayukh Youtube channel</button>
+                <button id="Btn2">Go to Google</button>
+                <button id="Btn3">Go to Google Map</button>
+                <button id="Btn4">Go to Google Gmail</button>
+                <button id="Btn5">Go to Input Types In HTML</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('ft').addEventListener('click', function() {
+            document.getElementById('slideScreen').classList.add('show');
+        });
+
+        document.getElementById('closeBtn').addEventListener('click', function() {
+            document.getElementById('slideScreen').classList.remove('show');
+        });
+
+        document.getElementById('youtubeBtn').addEventListener('click', function() {
+            window.location.href = 'https://www.youtube.com';
+        });
+
+        document.getElementById('Btn1').addEventListener('click', function() {
+            window.location.href = 'https://www.youtube.com/results?search_query=mayukh+batabyal';
+        });
+
+        document.getElementById('Btn2').addEventListener('click', function() {
+            window.location.href = 'https://www.google.com';
+        });
+
+        document.getElementById('Btn3').addEventListener('click', function() {
+            window.location.href = 'https://www.google.com/maps';
+        });
+
+        document.getElementById('Btn4').addEventListener('click', function() {
+            window.location.href = 'https://mail.google.com';
+        });
+
+        document.getElementById('Btn5').addEventListener('click', function() {
+            window.location.href = 'type1.html';
+        });
+    </script>
+
+
+    <a href="codetable.html" id="code" class="mayukh1">CLICK HERE FOR GET SOME DEFFERENT HTML CODES</a>
+    <a href="map.html" id="map" class="mayukh2">CLICK HERE FOR  GET SOME MAPS OF CONTINENTS</a>
+    
+    <a href="symbols.html" id="symbol" class="mayukh4">CLICK HERE FOR GET SOME SYMBOLS OF ATOMS</a>
+     <a href="games.html" id='gameBtn'class="mayukh3">CLICK HERE FOR GET SOME INTERESTING GAMES</a>
+     
+     <style>
+         .mayukh1{
+       position: absolute;
+            top: 70%;
+            right:25px ;
+            text-decoration: none;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+         }
+         .mayukh2{
+       position: absolute;
+            top: 80%;
+            right:25px;
+            text-decoration: none;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+         }
+         .mayukh3{
+       position: absolute;
+            top: 70%;
+            left:25px ;
+            text-decoration: none;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+         }
+         .mayukh4{
+       position: absolute;
+            top: 80%;
+            left: 25px;
+            text-decoration: none;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+         }
+          
+     </style>
+     
+</body>
+</html>
+

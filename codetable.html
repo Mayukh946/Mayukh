@@ -1,0 +1,349 @@
+<table border="n" style="width:100%; text-align:center; border-collapse:collapse;" >
+        <tr style="background-color:aquamarine; ;">
+            <th class="th">Some HTML codes for HTML learners</th>
+            <th class="th">Some HTML codes for HTML learners</th>
+
+          
+        </tr>
+        <tr>
+            <td>CODE FOR TABLE FAN</td>
+            <td>CODE FOR A TIMER</td>
+         
+        </tr>
+        <tr>
+            <td> 
+                <1!DOCTYPE html>
+<1html lang="en">
+<1head>
+    <1meta charset="UTF-8">
+    <1meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <1title>Fan Control<1/title>
+    <1style>
+        .fan-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+        }
+
+        .fan {
+            width: 150px;
+            height: 150px;
+            position: relative;
+            border: 2px solid black;
+            border-radius: 50%;
+            background-color: #d1d1d1;
+            animation: spin 0s linear infinite;
+        }
+
+        .blade {
+            width: 20px;
+            height: 60px;
+            background-color: #000080; /* Navy color for blades */
+            position: absolute;
+            top: 10px;
+            left: 65px;
+            transform-origin: bottom center;
+            border-radius: 10px;
+        }
+
+        .blade:nth-child(2) {
+            transform: rotate(120deg);
+        }
+
+        .blade:nth-child(3) {
+            transform: rotate(240deg);
+        }
+
+        .cage {
+            width: 150px;
+            height: 150px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border: 2px solid black;
+            border-radius: 50%;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        .cage-line {
+            width: 2px;
+            height: 150px;
+            background-color: black;
+            position: absolute;
+            top: 0;
+            left: 74px;
+        }
+
+        .cage-line:nth-child(2) {
+            transform: rotate(45deg);
+        }
+
+        .cage-line:nth-child(3) {
+            transform: rotate(90deg);
+        }
+
+        .cage-line:nth-child(4) {
+            transform: rotate(135deg);
+        }
+
+        .cage-line:nth-child(5) {
+            transform: rotate(180deg);
+        }
+
+        .cage-line:nth-child(6) {
+            transform: rotate(225deg);
+        }
+
+        .cage-line:nth-child(7) {
+            transform: rotate(270deg);
+        }
+
+        .cage-line:nth-child(8) {
+            transform: rotate(315deg);
+        }
+
+        .stand {
+            width: 20px;
+            height: 200px;
+            background-color: #000080; /* Navy color for stand */
+            margin-top: -10px;
+            border-radius: 10px;
+        }
+
+        .base {
+            width: 100px;
+            height: 20px;
+            background-color: #000080; /* Navy color for base */
+            border-radius: 50%;
+            margin-top: -10px;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        #solarPanel {
+            position: absolute;
+            right: 25%;
+            top: 45%;
+            transform: translateY(-50%);
+        }
+
+        #sun {
+            position: absolute;
+            left: 50px;
+            top: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+        }
+    <1/style>
+<1/head>
+<1body>
+    <1div class="fan-container">
+        <1div class="fan" id="fan">
+            <1div class="blade"><1/div>
+            <1div class="blade"><1/div>
+            <1div class="blade"><1/div>      
+        
+            <1div class="cage" id="1">
+                <1div class="cage-line"><1/div>
+                <1div class="cage-line"><1/div>
+                <1div class="cage-line"><1/div>
+                <1div class="cage-line"><1/div>
+                <1div class="cage-line"><1/div>
+                <1div class="cage-line"><1/div>
+                <1div class="cage-line"><1/div>
+                <1div class="cage-line"><1/div>
+            <1/div>
+        <1/div>
+        <1div class="stand"><1/div>
+        <1div class="base"><1/div>
+    <1/div>
+    <1br>
+    <1img id="solarPanel" src="location of picture of  solarpanel" alt="Solar Panel">
+    <1img id="sun" src="location of picture of sun" alt="Sun">
+
+    <1button onclick="increaseSpeed(1)">Speed 1<1/button>
+    <1button onclick="increaseSpeed(2)">Speed 2<1/button>
+    <1button onclick="increaseSpeed(3)">Speed 3<1/button>
+    <1button onclick="increaseSpeed(4)">Airplane Speed<1/button>
+
+    <1script>
+        let fan = document.getElementById("fan");
+        let sun = document.getElementById("sun");
+        let solarPanel = document.getElementById("solarPanel");
+
+        function startFan() {
+            fan.style.animationDuration = "1s"; // Set initial speed
+        }
+
+        function stopFan() {
+            fan.style.animationDuration = "0s";
+        }
+
+        function increaseSpeed(level) {
+            switch(level) {
+                case 1:
+                    fan.style.animationDuration = "1s";
+                    break;
+                case 2:
+                    fan.style.animationDuration = "0.5s";
+                    break;
+                case 3:
+                    fan.style.animationDuration = "0.25s";
+                    break;
+                case 4:
+                    fan.style.animationDuration = "0.005s"; // Airplane speed
+                    break;
+            }
+        }
+
+        function isTouching(elem1, elem2) {
+            const rect1 = elem1.getBoundingClientRect();
+            const rect2 = elem2.getBoundingClientRect();
+
+            return !(rect1.top > rect2.bottom || 
+                     rect1.bottom < rect2.top || 
+                     rect1.left > rect2.right || 
+                     rect1.right < rect2.left);
+        }
+
+        sun.addEventListener('mousedown', function(e) {
+            document.onmousemove = function(event) {
+                sun.style.left = event.pageX - 25 + 'px';
+                sun.style.top = event.pageY - 25 + 'px';
+
+                if (isTouching(sun, solarPanel)) {
+                    startFan();
+                } else {
+                    stopFan();
+                }
+            };
+
+            document.onmouseup = function() {
+                document.onmousemove = null;
+                document.onmouseup = null;
+                if (!isTouching(sun, solarPanel)) {
+                    stopFan();
+                }
+            };
+        });
+    <1/script>
+<1/body>
+<1/html>
+</td>
+<td>
+    <1!DOCTYPE html>
+<1html lang="en">
+<1head>
+    <1meta charset="UTF-8">
+    <1meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <1title>Time Counter<1/title>
+    
+<1/head>
+<1body>
+    <1div id="app">
+        <1h1>App Running Time<1/h1>
+        <1div id="time">00:00:00<1/div>
+    <1/div>
+  <1style>
+      body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 50px;
+    background-color: #f0f0f0;
+}
+
+#app {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#time {
+    font-size: 48px;
+    margin-top: 20px;
+}
+
+  <1/style>
+  <1script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+    const timeElement = document.getElementById('time');
+    let startTime = localStorage.getItem('startTime');
+    const lastReset = localStorage.getItem('lastReset');
+    
+    if (!startTime || isNewDay(lastReset)) {
+        startTime = Date.now();
+        localStorage.setItem('startTime', startTime);
+        localStorage.setItem('lastReset', Date.now());
+    }
+    
+    function updateClock() {
+        const now = Date.now();
+        const elapsedTime = now - startTime;
+        const hours = Math.floor(elapsedTime / (1000 * 60 * 60)) % 24;
+        const minutes = Math.floor(elapsedTime / (1000 * 60)) % 60;
+        const seconds = Math.floor(elapsedTime / 1000) % 60;
+        timeElement.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    
+    function pad(number) {
+        return number < 10 ? '0' + number : number;
+    }
+
+    function isNewDay(lastReset) {
+        if (!lastReset) return true;
+        const lastResetDate = new Date(parseInt(lastReset));
+        const currentDate = new Date();
+        return lastResetDate.getDate() !== currentDate.getDate() ||
+               lastResetDate.getMonth() !== currentDate.getMonth() ||
+               lastResetDate.getFullYear() !== currentDate.getFullYear();
+    }
+    
+    function resetTimeIfNeeded() {
+        const now = new Date();
+        if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() === 0) {
+            startTime = Date.now();
+            localStorage.setItem('startTime', startTime);
+            localStorage.setItem('lastReset', Date.now());
+        }
+    }
+
+    setInterval(updateClock, 1000);
+    setInterval(resetTimeIfNeeded, 1000);
+});
+
+  <1/script>
+<1/body>
+<1/html>
+
+</td>
+
+
+        </tr>
+        <tr>
+            <td>Remove the all "1" from the all html tags.
+                 Add the location of you pictures instead of "location of picture of  solarpanel" and "location of picture of sun".
+            Enter the code in note pad and open in chrome  and see the magic.</td>
+            <td>Remove the all "1" from the all html tags.
+            Enter the code in note pad and open in chrome  and see the magic</td>
+        </tr>
+      </table>
+      <style>
+        body{
+            background-color: royalblue;
+        }
+         table{
+            position: absolute;
+            top:80% ;
+
+          }
+          td{
+            color: gold;
+          }
+      </style>

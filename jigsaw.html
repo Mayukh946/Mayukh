@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jigsaw Puzzle Game</title>
+    <style>
+        .p1, .h1{
+            position: absolute;
+            left:80% ;
+            
+        }
+        .p1{
+            position: absolute;
+            top: 20%;
+        }
+        .h1{
+            position: absolute;
+            top: 10%;
+        }
+        .puzzle-container {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            width: 320px;
+            margin: auto;
+            padding: 10px;
+            border: 2px solid black;
+        }
+        .piece {
+            width: 100px;
+            height: 100px;
+            cursor: pointer;
+        }
+        .dropzone {
+            width: 100px;
+            height: 100px;
+            border: 2px dashed #000;
+        }
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .timer {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .button {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        /* Pop-up styles */
+        .popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .popup-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: #000; /* Changed to black for better contrast */
+        }
+        .popup h2 {
+            margin: 0;
+            font-size: 32px;
+            color: #000; /* Ensured black text to be visible on light background */
+        }
+        .popup .button {
+            background-color: #ff5722;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h3 class="h1">Make the photo</h3>
+     <img src="p1.jpg" class="p1" height="100" width="100">
+    <h2 align="center">Jigsaw Puzzle Game</h2>
+
+    <!-- Timer and Controls -->
+    <div class="controls">
+        <div class="timer" id="timer">Time: 01:00</div>
+        <button class="button" id="backButton">Back</button>
+        <button class="button" id="pauseButton">Pause</button>
+        <button class="button" id="restartButton">Restart</button>
+    </div>
+
+    <!-- Puzzle Board -->
+    <div class="puzzle-container" id="puzzle-board">
+        <div class="dropzone" data-id="1"></div>
+        <div class="dropzone" data-id="2"></div>
+        <div class="dropzone" data-id="3"></div>
+        <div class="dropzone" data-id="4"></div>
+        <div class="dropzone" data-id="5"></div>
+        <div class="dropzone" data-id="6"></div>
+        <div class="dropzone" data-id="7"></div>
+        <div class="dropzone" data-id="8"></div>
+        <div class="dropzone" data-id="9"></div>
+    </div>
+
+    <!-- Puzzle Pieces -->
+    <h3 align="center">Pieces</h3>
+    <div class="puzzle-container" id="pieces">
+        <img src="piece_1.png" id="piece1" class="piece" draggable="true" data-id="1">
+
+        <img src="piece_3.png" id="piece3" class="piece" draggable="true" data-id="3">
+
+       
+
+        <img src="piece_5.png" id="piece5" class="piece" draggable="true" data-id="5">
+ <img src="piece_4.png" id="piece4" class="piece" draggable="true" data-id="4">
+        <img src="piece_9.png" id="piece9" class="piece" draggable="true" data-id="9">
+<img src="piece_8.png" id="piece8" class="piece" draggable="true" data-id="8">
+
+        <img src="piece_6.png" id="piece6" class="piece" draggable="true" data-id="6">
+
+         <img src="piece_2.png" id="piece2" class="piece" draggable="true" data-id="2">
+
+        <img src="piece_7.png" id="piece7" class="piece" draggable="true" data-id="7">
+
+        
+        
+    </div>
+
+    <!-- Pop-up Modal -->
+    <div class="popup" id="popup">
+        <div class="popup-content">
+            <h2 id="popup-message">Message</h2>
+            <button class="button" id="popup-restart">Restart</button>
+        </div>
+    </div>
+
+    <script>
+        const pieces = document.querySelectorAll('.piece');
+        const dropzones = document.querySelectorAll('.dropzone');
+        const popup = document.getElementById('popup');
+        const popupMessage = document.getElementById('popup-message');
+        const popupRestart = document.getElementById('popup-restart');
+        let timerInterval, remainingTime = 60, isPaused = false;
+        let placedPieces = 0;
+
+        pieces.forEach(piece => {
+            piece.addEventListener('dragstart', dragStart);
+        });
+
+        dropzones.forEach(zone => {
+            zone.addEventListener('dragover', dragOver);
+            zone.addEventListener('drop', dropPiece);
+        });
+
+        function dragStart(e) {
+            e.dataTransfer.setData('text', e.target.id);
+        }
+
+        function dragOver(e) {
+            e.preventDefault();
+        }
+
+        function dropPiece(e) {
+            e.preventDefault();
+            const id = e.dataTransfer.getData('text');
+            const piece = document.getElementById(id);
+            const zoneId = e.target.getAttribute('data-id');
+            
+            if (piece.getAttribute('data-id') === zoneId) {
+                e.target.appendChild(piece);
+                e.target.style.border = 'none'; // Remove dashed border on successful drop
+                placedPieces++;
+                
+                // Check if the player has placed all the pieces
+                if (placedPieces === 9) {
+                    clearInterval(timerInterval);
+                    showPopup("Congratulations, You Win!");
+                }
+            }
+        }
+
+        // Timer logic
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (!isPaused) {
+                    remainingTime--;
+                    updateTimerDisplay();
+                    if (remainingTime <= 0) {
+                        clearInterval(timerInterval);
+                        showPopup("Time's up, Game Over!");
+                    }
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(remainingTime / 60);
+            const seconds = remainingTime % 60;
+            document.getElementById('timer').textContent = `Time: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Pop-up functionality
+        function showPopup(message) {
+            popupMessage.textContent = message;
+            popup.style.display = 'flex';
+        }
+
+        popupRestart.addEventListener('click', () => {
+            popup.style.display = 'none';
+            restartGame();
+        });
+
+        // Button functionalities
+        document.getElementById('backButton').addEventListener('click', () => {
+            window.history.back(); // Go to the previous page
+        });
+
+        document.getElementById('pauseButton').addEventListener('click', () => {
+            isPaused = !isPaused; // Toggle pause and play
+            document.getElementById('pauseButton').textContent = isPaused ? 'Resume' : 'Pause';
+        });
+
+        document.getElementById('restartButton').addEventListener('click', restartGame);
+
+        function restartGame() {
+            clearInterval(timerInterval);
+            remainingTime = 60;
+            isPaused = false;
+            placedPieces = 0;
+            updateTimerDisplay();
+            startTimer();
+            
+            // Reset the puzzle pieces back to their original position
+            pieces.forEach(piece => {
+                document.getElementById('pieces').appendChild(piece);
+            });
+
+            // Add dashed borders back to dropzones
+            dropzones.forEach(zone => {
+                zone.style.border = '2px dashed #000';
+            });
+        }
+
+        // Start the game timer when the page loads
+        window.onload = function() {
+            updateTimerDisplay();
+            startTimer();
+        };
+    </script>
+
+</body>
+</html>

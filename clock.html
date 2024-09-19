@@ -1,0 +1,245 @@
+<<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M.B.E. Clock</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(90deg, #f3f4f6, #e5e7eb);
+        }
+
+        .section {
+            flex: 1;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            margin: 10px;
+            max-width: 300px;
+        }
+
+        h2 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .timer, .alarm, .stopwatch {
+            font-size: 2em;
+            text-align: center;
+            margin: 20px 0;
+            color: #ff5f57;
+        }
+
+        button, input[type="time"], input[type="number"], input[type="file"] {
+            margin: 5px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .timer-input {
+            width: 100%;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .alarm-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        audio {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Timer Section -->
+    <div class="section">
+        <h2>Timer</h2>
+        <div id="timer" class="timer">00:00</div>
+        <input class="timer-input" type="number" id="timerInput" placeholder="Set minutes" min="0">
+        <button onclick="startTimer()">Start Timer</button>
+        <button onclick="resetTimer()">Reset Timer</button>
+    </div>
+
+    <!-- Alarm Section -->
+    <div class="section">
+        <h2>Alarms</h2>
+        <div id="alarmsContainer"></div>
+        <button onclick="addAlarm()">Add Alarm</button>
+        <button onclick="stopAllAlarms()">Stop All Alarms</button>
+    </div>
+
+    <!-- Stopwatch Section -->
+    <div class="section">
+        <h2>Stopwatch</h2>
+        <div id="stopwatch" class="stopwatch">00:00</div>
+        <button onclick="startStopwatch()">Start</button>
+        <button onclick="stopStopwatch()">Stop</button>
+        <button onclick="resetStopwatch()">Reset</button>
+    </div>
+
+    <script>
+        // Timer Functionality
+        let timerInterval;
+        function startTimer() {
+            const minutes = document.getElementById('timerInput').value;
+            let time = minutes * 60;
+            timerInterval = setInterval(function () {
+                if (time <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('timer').textContent = "Time's up!";
+                } else {
+                    const min = Math.floor(time / 60);
+                    const sec = time % 60;
+                    document.getElementById('timer').textContent = `${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
+                    time--;
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            document.getElementById('timer').textContent = "00:00";
+        }
+
+        // Alarm Functionality
+        let alarms = [];
+        function addAlarm() {
+            if (alarms.length < 10) {
+                const alarmIndex = alarms.length;
+                const alarmContainer = document.getElementById('alarmsContainer');
+                const alarmDiv = document.createElement('div');
+                alarmDiv.classList.add('alarm-container');
+                alarmDiv.innerHTML = `
+                    <input type="time" id="alarmTime${alarmIndex}">
+                    <input type="file" id="alarmAudio${alarmIndex}" accept="audio/*">
+                    <button onclick="setAlarm(${alarmIndex})">Set Alarm</button>
+                    <button onclick="closeAlarm(${alarmIndex})">Close Alarm</button>
+                    <div id="alarmMsg${alarmIndex}"></div>
+                    <audio id="audio${alarmIndex}"></audio>
+                `;
+                alarmContainer.appendChild(alarmDiv);
+                alarms.push(null);
+            } else {
+                alert('Maximum of 10 alarms allowed!');
+            }
+        }
+
+        function setAlarm(index) {
+            const alarmTime = document.getElementById(`alarmTime${index}`).value;
+            const audioFile = document.getElementById(`alarmAudio${index}`).files[0];
+            if (alarmTime && audioFile) {
+                const now = new Date();
+                const alarmDate = new Date();
+                const [hour, minute] = alarmTime.split(':');
+                alarmDate.setHours(hour, minute, 0, 0);
+
+                const timeDiff = alarmDate - now;
+                if (timeDiff > 0) {
+                    const alarmAudio = document.getElementById(`audio${index}`);
+                    const audioURL = URL.createObjectURL(audioFile);
+                    alarmAudio.src = audioURL;
+                    document.getElementById(`alarmMsg${index}`).textContent = "Alarm set!";
+                    alarms[index] = setTimeout(function () {
+                        alarmAudio.play();
+                        document.getElementById(`alarmMsg${index}`).textContent = `
+                            Alarm is ringing! 
+                            
+                    }, timeDiff);
+                } else {
+                    document.getElementById(`alarmMsg${index}`).textContent = "Set a future time.";
+                }
+            } else {
+                alert('Please set a time and choose an audio file.');
+            }
+        }
+
+        function snoozeAlarm(index) {
+            stopAlarm(index);
+            const snoozeTime = 5 * 60 * 1000; // 5 minutes snooze
+            alarms[index] = setTimeout(function () {
+                const alarmAudio = document.getElementById(`audio${index}`);
+                alarmAudio.play();
+                document.getElementById(`alarmMsg${index}`).innerHTML = `
+                    Alarm is ringing again! 
+                    <button onclick="snoozeAlarm(${index})">Snooze</button>
+                    <button onclick="stopAlarm(${index})">Stop</button>`;
+            }, snoozeTime);
+        }
+
+        function stopAlarm(index) {
+            const alarmAudio = document.getElementById(`audio${index}`);
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+            document.getElementById(`alarmMsg${index}`).textContent = "Alarm stopped.";
+        }
+
+        function closeAlarm(index) {
+            document.getElementById(`alarmTime${index}`).parentElement.remove();
+            alarms[index] = null;
+        }
+
+        function stopAllAlarms() {
+            alarms.forEach((alarm, index) => {
+                if (alarm) {
+                    clearTimeout(alarm);
+                    document.getElementById(`audio${index}`).pause();
+                    document.getElementById(`audio${index}`).currentTime = 0;
+                    document.getElementById(`alarmMsg${index}`).textContent = "Alarm stopped.";
+                }
+            });
+        }
+
+        // Stopwatch Functionality
+        let stopwatchInterval;
+        let stopwatchTime = 0;
+        function startStopwatch() {
+            stopwatchInterval = setInterval(function () {
+                stopwatchTime++;
+                const min = Math.floor(stopwatchTime / 60);
+                const sec = stopwatchTime % 60;
+                document.getElementById('stopwatch').textContent = `${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
+            }, 1000);
+        }
+
+        function stopStopwatch() {
+            clearInterval(stopwatchInterval);
+        }
+
+        function resetStopwatch() {
+            clearInterval(stopwatchInterval);
+            stopwatchTime = 0;
+            document.getElementById('stopwatch').textContent = "00:00";
+        }
+    </script>
+
+</body>
+</html>
