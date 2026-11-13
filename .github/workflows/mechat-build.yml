@@ -1,0 +1,27 @@
+name: MECHAT Netlify build check
+on:
+  push:
+    branches: [mechat-netlify-migration]
+    paths:
+      - "mechat/**"
+      - "netlify.toml"
+      - ".github/workflows/mechat-build.yml"
+  pull_request:
+    paths:
+      - "mechat/**"
+      - "netlify.toml"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mechat
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mechat/package-lock.json
+      - run: npm install
+      - run: npm run build
