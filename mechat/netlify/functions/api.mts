@@ -838,7 +838,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
 export default async (request: Request) => {
  try {
   const url = new URL(request.url);
-  const actualPath = url.pathname.replace(/\\/+$/, '') || '/';
+  const actualPath = url.pathname.endsWith('/') && url.pathname !== '/' ? url.pathname.slice(0, -1) : url.pathname;
   const query = Object.fromEntries(url.searchParams.entries());
   let body: any;
   if (!['GET','HEAD','DELETE'].includes(request.method)) {
