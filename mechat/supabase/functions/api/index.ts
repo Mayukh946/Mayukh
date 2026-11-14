@@ -279,6 +279,8 @@ async function handle(req: Request): Promise<Response> {
       }
       if (!deliveries.length) return fail(req, "No valid recipient devices were found.", 409);
       if (!seen.has(user.uid + ":" + senderDeviceId)) return fail(req, "Your sending device must receive its own encrypted copy.", 400);
+      if (available.some((d: AnyRecord) => !seen.has(d.user_id + ":" + d.device_id))) return fail(req, "The device list changed. Refresh the chat and retry.", 409);
+      if (!conversationId.startsWith("group_") && !deliveries.some(d => d.recipient_id === input.recipientId)) return fail(req, "The recipient has no registered device.", 409);
 
       const mediaFileId = typeof input.mediaFileId === "string" ? input.mediaFileId : "";
       if (mediaFileId) {
