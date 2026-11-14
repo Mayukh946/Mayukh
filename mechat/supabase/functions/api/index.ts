@@ -146,6 +146,23 @@ async function handle(req: Request): Promise<Response> {
   }
 
   try {
+    if (req.method === "GET" && path === "/api/calls/ice") {
+      const iceServers: AnyRecord[] = [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ];
+      const turnUrl = Deno.env.get("TURN_URL") || "";
+      const turnSecret = Deno.env.get("TURN_SHARED_SECRET") || "";
+      if (turnUrl && turnSecret) {
+        const username = String(Math.floor(Date.now() / 1000) + 3600) + ":" + user.uid;
+        const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(turnSecret), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+        const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(username));
+        const credential = btoa(String.fromCharCode(...new Uint8Array(signature)));
+        iceServers.push({ urls: turnUrl.split(",").map(v => v.trim()), username, credential });
+      }
+      return json(req, { ok: true, iceServers, turnConfigured: Boolean(turnUrl && turnSecret) });
+    }
+
     if (req.method === "GET" && path === "/api/_healthcheck") {
       const { error } = await admin.from("profiles").select("user_id").limit(1);
       if (error) throw error;
@@ -227,21 +244,25 @@ async function handle(req: Request): Promise<Response> {
       if (!senderDevice) return fail(req, "This device is not registered.", 403);
 
       let recipientIds: string[] = [];
+      let allowedDeviceKeys: Set<string> | null = null;
       if (conversationId.startsWith("group_")) {
         const groupId = conversationId.slice(6);
         const ownMembership = await groupMembership(groupId, user.uid);
         if (!ownMembership.length) return fail(req, "You are not a member of this group.", 403);
-        const { data: members, error } = await admin.from("group_members").select("user_id").eq("group_id", groupId).eq("active", true);
+        const { data: members, error } = await admin.from("group_members").select("user_id,device_id").eq("group_id", groupId).eq("active", true);
         if (error) throw error;
         recipientIds = [...new Set((members || []).map((m: AnyRecord) => String(m.user_id)))];
+        allowedDeviceKeys = new Set((members || []).map((m: AnyRecord) => m.user_id + ":" + m.device_id));
       } else {
         const recipientId = input.recipientId;
         if (!validId(recipientId) || recipientId === user.uid) return fail(req, "Invalid recipient.");
+        const expected = "dm_" + [user.uid, recipientId].sort().join("_");
+        if (conversationId !== expected) return fail(req, "Conversation participants do not match.", 403);
         if (!(await directConversationAllowed(user.uid, recipientId))) return fail(req, "Add this person as a contact before messaging.", 403);
         recipientIds = [user.uid, recipientId];
       }
 
-      const available = await deviceRows(recipientIds);
+      const available = (await deviceRows(recipientIds)).filter((d: AnyRecord) => !allowedDeviceKeys || allowedDeviceKeys.has(d.user_id + ":" + d.device_id));
       const availableKeys = new Set(available.map((d: AnyRecord) => d.user_id + ":" + d.device_id));
       const deliveries: AnyRecord[] = [];
       const seen = new Set<string>();
@@ -292,17 +313,17 @@ async function handle(req: Request): Promise<Response> {
       if (!device) return fail(req, "Device is not registered for this account.", 403);
       if (conversationId.startsWith("group_") && !(await groupMembership(conversationId.slice(6), user.uid)).length) return fail(req, "Not a group member.", 403);
       if (conversationId.startsWith("dm_") && !conversationId.slice(3).split("_").includes(user.uid)) return fail(req, "Not a participant in this conversation.", 403);
-      const { data: deliveries, error } = await admin.from("message_deliveries").select("message_id,recipient_device_id,ciphertext,nonce,delivery_status,created_at").eq("recipient_id", user.uid).eq("recipient_device_id", deviceId).order("created_at", { ascending: true }).limit(200);
-      if (error) throw error;
-      const ids = [...new Set((deliveries || []).map((d: AnyRecord) => d.message_id))];
-      if (!ids.length) return json(req, { ok: true, messages: [] });
-      const { data: messages, error: messageError } = await admin.from("messages").select("id,sender_id,sender_device_id,conversation_id,kind,created_at").in("id", ids).eq("conversation_id", conversationId);
+      const { data: messages, error: messageError } = await admin.from("messages").select("id,sender_id,sender_device_id,conversation_id,kind,created_at").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(200);
       if (messageError) throw messageError;
+      const ids = (messages || []).map((m: AnyRecord) => m.id);
+      if (!ids.length) return json(req, { ok: true, messages: [] });
+      const { data: deliveries, error } = await admin.from("message_deliveries").select("message_id,recipient_device_id,ciphertext,nonce,delivery_status,created_at").eq("recipient_id", user.uid).eq("recipient_device_id", deviceId).in("message_id", ids);
+      if (error) throw error;
       const byId = new Map((messages || []).map((m: AnyRecord) => [m.id, m]));
       const result = (deliveries || []).filter((d: AnyRecord) => byId.has(d.message_id)).map((d: AnyRecord) => {
         const m = byId.get(d.message_id) as AnyRecord;
         return { messageId: m.id, senderId: m.sender_id, senderDeviceId: m.sender_device_id, recipientDeviceId: d.recipient_device_id, kind: m.kind, ciphertext: d.ciphertext, nonce: d.nonce, createdAt: m.created_at, deliveryStatus: d.delivery_status };
-      });
+      }).sort((a: AnyRecord, b: AnyRecord) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       return json(req, { ok: true, messages: result });
     }
 
@@ -460,6 +481,18 @@ async function handle(req: Request): Promise<Response> {
       const sender = devices.find((d: AnyRecord) => d.user_id === user.uid && d.device_id === input.senderDeviceId);
       const target = devices.find((d: AnyRecord) => d.user_id === input.recipientId && d.device_id === input.recipientDeviceId);
       if (!sender || !target) return fail(req, "Call devices are not registered.", 403);
+      let canCall = await directConversationAllowed(user.uid, input.recipientId);
+      if (!canCall) {
+        const [mine, theirs] = await Promise.all([
+          admin.from("group_members").select("group_id").eq("user_id", user.uid).eq("active", true),
+          admin.from("group_members").select("group_id").eq("user_id", input.recipientId).eq("active", true),
+        ]);
+        if (mine.error) throw mine.error;
+        if (theirs.error) throw theirs.error;
+        const shared = new Set((mine.data || []).map((m: AnyRecord) => m.group_id));
+        canCall = (theirs.data || []).some((m: AnyRecord) => shared.has(m.group_id));
+      }
+      if (!canCall) return fail(req, "Calls are only available to contacts or shared group members.", 403);
       const now = new Date();
       const { error } = await admin.from("call_signals").insert({
         id: input.signalId, call_id: input.callId, sender_id: user.uid, sender_device_id: input.senderDeviceId,
