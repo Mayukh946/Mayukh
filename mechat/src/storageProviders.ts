@@ -1,39 +1,40 @@
-export type StorageProviderStatus = 'active' | 'reserved';
+export type StorageProviderStatus = 'active' | 'legacy' | 'reserved';
 
 export interface StorageProviderSlot {
-  id: 'appwrite' | 'terabox' | 'icedrive';
+  id: 'supabase' | 'appwrite' | 'terabox' | 'icedrive';
   name: string;
   status: StorageProviderStatus;
   label: string;
   description: string;
 }
 
-/**
- * Storage-provider registry.
- * Appwrite remains the only configured storage backend.
- * TeraBox and Icedrive are intentionally reserved until official
- * developer credentials and supported APIs are supplied.
- */
 export const storageProviders: StorageProviderSlot[] = [
+  {
+    id: 'supabase',
+    name: 'Supabase Storage',
+    status: 'active',
+    label: 'Active',
+    description: 'Private encrypted media bucket with short-lived signed uploads and downloads.',
+  },
   {
     id: 'appwrite',
     name: 'Appwrite Storage',
-    status: 'active',
-    label: 'Active',
-    description: 'Current encrypted attachment storage. Existing MECHAT uploads continue to use this provider.',
+    status: 'legacy',
+    label: 'Legacy archive',
+    description: 'Previous MECHAT storage retained as a migration source; new uploads no longer use it.',
   },
   {
     id: 'terabox',
     name: 'TeraBox',
     status: 'reserved',
-    label: 'Reserved',
-    description: 'Integration slot prepared. Waiting for approved TeraBox developer credentials.',
+    label: 'Not connected',
+    description: 'No supported official developer integration is configured.',
   },
   {
     id: 'icedrive',
     name: 'Icedrive',
     status: 'reserved',
-    label: 'Reserved',
-    description: 'Integration slot prepared. Waiting for an officially supported API and credentials.',
+    label: 'Not connected',
+    description: 'No supported official developer integration is configured.',
   },
 ];

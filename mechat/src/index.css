@@ -39,7 +39,7 @@ button:disabled {
 }
 .app-shell {
   height: 100dvh;
-  min-height: 560px;
+  min-height: 0;
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   background: var(--bg);
@@ -1305,4 +1305,145 @@ button:disabled {
 .provider-role {
   color: var(--muted);
   font-weight: 600;
+}
+
+/* MECHAT original identity and small-screen dialog layout */
+.brand-logo {
+  display: block;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 34px;
+  color: #f3f6ff;
+  font: 800 22px Manrope, sans-serif;
+  letter-spacing: -0.5px;
+}
+.auth-logo {
+  display: block;
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  border-radius: 15px;
+  box-shadow: 0 10px 34px #1648b344;
+}
+.boot-logo {
+  display: block;
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  border-radius: 18px;
+}
+.app-shell {
+  min-height: 0;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+.modal {
+  flex: 0 0 auto;
+  margin: auto;
+  max-width: 100%;
+}
+.settings-modal {
+  width: min(100%, 540px);
+  max-height: calc(100dvh - max(24px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  padding: 18px 22px max(22px, env(safe-area-inset-bottom));
+}
+.settings-head {
+  position: sticky;
+  top: -18px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -18px -22px 18px;
+  padding: 16px 16px 12px 22px;
+  background: #152132;
+  border-bottom: 1px solid #2a394d;
+}
+.settings-head h3 {
+  margin: 0;
+  font: 700 21px Manrope, sans-serif;
+}
+.settings-section-title {
+  margin: 18px 0 10px;
+  color: #9eafc4;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+.settings-modal label {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  color: #dce5f2;
+  font-size: 12px;
+}
+.settings-modal label input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid #34465e;
+  border-radius: 10px;
+  outline: none;
+  background: #101b2a;
+  color: #f3f6ff;
+}
+.settings-modal label input:focus {
+  border-color: #7c9df7;
+  box-shadow: 0 0 0 3px #7c9df722;
+}
+.settings-signout {
+  margin-top: 22px;
+}
+@media (max-width: 620px) {
+  .modal-backdrop {
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+  }
+  .settings-modal {
+    width: 100%;
+    max-height: calc(100dvh - max(20px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+    border-radius: 15px;
+    padding-left: 17px;
+    padding-right: 17px;
+  }
+  .settings-head {
+    top: -18px;
+    margin-left: -17px;
+    margin-right: -17px;
+    padding-left: 17px;
+    padding-right: 13px;
+  }
+  .brand-logo {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+  .auth-brand {
+    margin-bottom: 24px;
+  }
 }
