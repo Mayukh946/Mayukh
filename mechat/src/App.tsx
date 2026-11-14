@@ -54,7 +54,7 @@ if(file){
   const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},fileKey,await file.arrayBuffer()));
   mediaFileId=rid();
   const upload=await apiCall('post','/api/media/init',{fileId:mediaFileId,conversationId:active,sizeBytes:encrypted.length});
-  const uploaded=await supabase.storage.from('mechat-media').uploadToSignedUrl(upload.storagePath,upload.uploadToken,new Blob([encrypted],{type:'application/octet-stream'}),{contentType:'application/octet-stream',upsert:false});
+  const uploaded=await supabase.storage.from('mechat-media').uploadToSignedUrl(upload.storagePath,upload.uploadToken,new Blob([encrypted.buffer as ArrayBuffer],{type:'application/octet-stream'}),{contentType:'application/octet-stream',upsert:false});
   if(uploaded.error)throw new Error(uploaded.error.message);
   await apiCall('post','/api/media/complete',{fileId:mediaFileId});
   const toB64=(bytes:Uint8Array)=>{let binary='';for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));return btoa(binary);};
