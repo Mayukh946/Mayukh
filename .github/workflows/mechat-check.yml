@@ -1,0 +1,27 @@
+name: MECHAT production rebuild checks
+
+on:
+  push:
+    branches:
+      - mechat-production-rebuild
+    paths:
+      - "mechat/**"
+      - ".github/workflows/mechat-check.yml"
+  pull_request:
+    paths:
+      - "mechat/**"
+
+jobs:
+  build-and-typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mechat
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npm run build
