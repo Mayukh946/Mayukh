@@ -8,8 +8,8 @@ function getSecret(name: string): string {
 const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
 const APPWRITE_PROJECT_ID = '6ae42bb800301ceb109f';
 const APPWRITE_DATABASE_ID = '6ae42c400025d2622884';
-const FIREBASE_PROJECT_ID = 'mechat-49a5d';
-const FIREBASE_WEB_API_KEY = 'AIzaSyBB6ymKhGfX86YGnMeo22Rd5hZ3X4SyVrg';
+const FIREBASE_PROJECT_ID = 'chatx-b9c4b';
+const FIREBASE_WEB_API_KEY = 'AIzaSyDeVvGYHczvP0oqijyBoA9_tbEcncmzsOc';
 
 type Row = Record<string, unknown> & { $id?: string };
 
