@@ -62,6 +62,13 @@ async function authenticate(req: Request): Promise<User | null> {
     return null;
   }
 }
+async function persistentRateLimit(uid: string, key: string, limit: number, windowSeconds = 60) {
+  const { data, error } = await admin.rpc("mechat_consume_rate_limit", {
+    p_bucket_key: uid + ":" + key, p_limit: limit, p_window_seconds: windowSeconds,
+  });
+  if (error) throw error;
+  return data === true;
+}
 async function ensureProfile(user: User) {
   const { error } = await admin.from("profiles").upsert({
     user_id: user.uid, email: user.email, display_name: user.name.slice(0, 80), updated_at: new Date().toISOString(),
@@ -176,6 +183,7 @@ async function handle(req: Request): Promise<Response> {
     }
 
     if (req.method === "POST" && path === "/api/users/lookup") {
+      if (!(await persistentRateLimit(user.uid, "user-lookup", 10))) return fail(req, "Too many account lookups. Try again in a minute.", 429);
       const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(req, "Enter a valid email address.");
       const { data: profile, error } = await admin.from("profiles").select("user_id,email,display_name,avatar_path").ilike("email", email).maybeSingle();
@@ -420,6 +428,7 @@ async function handle(req: Request): Promise<Response> {
     }
 
     if (req.method === "POST" && path === "/api/media/init") {
+      if (!(await persistentRateLimit(user.uid, "media-init", 20))) return fail(req, "Too many upload requests. Try again shortly.", 429);
       const fileId = input.fileId, conversationId = input.conversationId, sizeBytes = Number(input.sizeBytes);
       if (!validId(fileId) || fileId.length > 36 || !validId(conversationId) || !Number.isSafeInteger(sizeBytes) || sizeBytes < 1 || sizeBytes > MAX_MEDIA_BYTES) return fail(req, "Invalid attachment.");
       if (conversationId.startsWith("group_")) {
@@ -472,6 +481,7 @@ async function handle(req: Request): Promise<Response> {
     }
 
     if (req.method === "POST" && path === "/api/calls/signals") {
+      if (!(await persistentRateLimit(user.uid, "call-signals", 180))) return fail(req, "Call signalling rate limit reached.", 429);
       const fields = ["signalId","callId","recipientId","recipientDeviceId","senderDeviceId"];
       if (fields.some(k => !validId(input[k])) || !["offer","answer","ice","hangup","reject"].includes(input.kind) || typeof input.payload !== "string" || input.payload.length > 100000) return fail(req, "Invalid call signal.");
       const devices = await deviceRows([user.uid, input.recipientId]);
