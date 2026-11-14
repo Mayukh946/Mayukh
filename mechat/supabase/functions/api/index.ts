@@ -451,14 +451,17 @@ async function handle(req: Request): Promise<Response> {
     if (req.method === "POST" && path === "/api/media/complete") {
       const fileId = input.fileId;
       if (!validId(fileId)) return fail(req, "Invalid attachment.");
-      const { data: file, error } = await admin.from("media_files").select("id,owner_id,storage_path,status").eq("id", fileId).maybeSingle();
+      const { data: file, error } = await admin.from("media_files").select("id,owner_id,storage_path,status,size_bytes").eq("id", fileId).maybeSingle();
       if (error) throw error;
       if (!file || file.owner_id !== user.uid) return fail(req, "Attachment not found.", 404);
       const folder = file.storage_path.split("/")[0];
       const filename = file.storage_path.split("/").slice(1).join("/");
       const { data: objects, error: listError } = await admin.storage.from("mechat-media").list(folder, { search: filename, limit: 10 });
       if (listError) throw listError;
-      if (!(objects || []).some((o: AnyRecord) => o.name === filename)) return fail(req, "Upload has not completed yet.", 409);
+      const uploadedObject = (objects || []).find((o: AnyRecord) => o.name === filename);
+      if (!uploadedObject) return fail(req, "Upload has not completed yet.", 409);
+      const actualSize = Number(uploadedObject.metadata?.size || 0);
+      if (actualSize && actualSize !== Number(file.size_bytes)) return fail(req, "Uploaded file size does not match the authorized size.", 409);
       const { error: updateError } = await admin.from("media_files").update({ status: "uploaded", uploaded_at: new Date().toISOString() }).eq("id", fileId).eq("owner_id", user.uid);
       if (updateError) throw updateError;
       return json(req, { ok: true, fileId });
