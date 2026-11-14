@@ -20,6 +20,7 @@ const [addOpen,AO]=useState(false),[addEmail,AE]=useState(''),[addName,AN]=useSt
 const [ice,ICE]=useState<RTCIceServer[]>([{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]);
 const [incoming,IN]=useState<any>(null),[calling,CALL]=useState(false),[local,LOCAL]=useState<MediaStream|null>(null),[remote,REMOTE]=useState<Record<string,MediaStream>>({}),[muted,MUTED]=useState(false);
 const pcs=useRef<Map<string,RTCPeerConnection>>(new Map()),pendingIce=useRef<Map<string,RTCIceCandidateInit[]>>(new Map()),syncBusy=useRef(false),contactsBusy=useRef(false),chat=chats.find(x=>x.id===active),shown=useMemo(()=>messages.filter(x=>x.conversationId===active).sort((a,b)=>a.time-b.time),[messages,active]);
+useEffect(()=>{if(!settings)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';const closeOnEscape=(event:KeyboardEvent)=>{if(event.key==='Escape')ST(false);};window.addEventListener('keydown',closeOnEscape);return()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',closeOnEscape);};},[settings]);
 const apiCall=useCallback(async(method:'get'|'post'|'delete',path:string,body?:Record<string,unknown>)=>{
   const token=await user?.getIdToken();
   try {
