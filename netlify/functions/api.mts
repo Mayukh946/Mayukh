@@ -212,6 +212,12 @@ async function ensureSchema() {
   return Promise.all(Object.keys(schemas).map(table => ensureTable(table)));
 }
 
+let schemaProvisioning: Promise<unknown> | null = null;
+async function provisionSchemaOnce() {
+  if (!schemaProvisioning) schemaProvisioning = (async () => { const tables = await ensureSchema(); const bucket = await ensureStorageBucket(); return { tables, bucket }; })().catch(error => { schemaProvisioning = null; throw error; });
+  return schemaProvisioning;
+}
+
 async function ensureStorageBucket() {
   const bucketId = 'mechat-media';
   const bucketPath = `/storage/buckets/${encodeURIComponent(bucketId)}`;
@@ -380,9 +386,9 @@ const apiHandler = router({
     async ({ event }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      // Schema and storage provisioning are handled by deployment/admin setup;
-      // do not perform dozens of metadata requests on every sign-in.
+      // Provision the MECHAT TablesDB schema and encrypted-media bucket once per warm function instance.
       try {
+        await provisionSchemaOnce();
         const result = await appwriteRequest(path('profiles'));
         if (!result.response.ok) throw new Error(`Appwrite profiles table check failed (${result.response.status})`);
         return json({ ok: true, service: 'MECHAT', appwrite: 'connected' });
