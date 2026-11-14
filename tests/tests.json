@@ -1,0 +1,144 @@
+[
+  {
+    "name": "Load frontend assets from the app root",
+    "sanity": true,
+    "viewport": "mobile",
+    "covers": [
+      "root-relative Vite asset URLs",
+      "frontend JavaScript and CSS loading",
+      "PWA manifest loading without malformed relative URLs"
+    ],
+    "description": "Verifies the production app loads its frontend bundle, stylesheet and manifest from the MECHAT subdomain root.",
+    "steps": [
+      "Open the deployed MECHAT URL on a mobile viewport",
+      "Wait for the frontend to initialize",
+      "Check the JavaScript bundle, stylesheet and manifest network requests"
+    ],
+    "expected": "The MECHAT page initializes and its JavaScript, CSS and manifest load successfully without malformed URLs or 404 responses."
+  },
+  {
+    "name": "Sign in and register a local device identity",
+    "viewport": "desktop",
+    "covers": [
+      "Firebase authentication",
+      "ECDH P-256 device identity",
+      "non-extractable private-key storage",
+      "Appwrite device registration",
+      "Appwrite health check without serial schema timeout"
+    ],
+    "description": "A signed-in account creates a device key pair, registers its public key, and confirms the existing Appwrite schema is reachable.",
+    "steps": [
+      "Sign in to MECHAT",
+      "Wait for device setup",
+      "Reload the app"
+    ],
+    "expected": "The same local device identity remains registered, the private key is not uploaded, and the Appwrite health check completes without rebuilding every table."
+  },
+  {
+    "name": "Send a direct encrypted message to another device",
+    "viewport": "desktop",
+    "covers": [
+      "account lookup",
+      "direct AES-GCM encryption with JSON-encoded Appwrite public keys",
+      "multi-device message envelopes",
+      "Appwrite offline queue and canonical shared conversation ID",
+      "delivery acknowledgement",
+      "no browser message-history cache",
+      "chunked client-side encrypted Appwrite Storage upload",
+      "recipient-authorized short-lived file-token download",
+      "attachment decryption and download integrity"
+    ],
+    "description": "Actor A sends encrypted text and an encrypted Appwrite Storage attachment to Actor B; Actor B decrypts the message and downloads the original file without browser message-history persistence.",
+    "setup": [
+      "Register Actor A and Actor B with devices."
+    ],
+    "steps": [
+      "Actor A adds Actor B; the contact is saved for both accounts and appears after reload",
+      "Actor A opens the direct chat with Actor B",
+      "Actor A sends a message",
+      "Actor B opens and keeps the chat active while automatic inbox polling runs",
+      "Actor B confirms the new message appears without manually reloading",
+      "Actor A selects a 2 MB image attachment and waits for the encrypted upload to finish",
+      "Actor B opens the received attachment and downloads it"
+    ],
+    "expected": "Actor A's contact remains after reload; Actor B also sees Actor A in contacts; both accounts use the same canonical direct conversation ID; Actor B automatically receives and decrypts the text message, sees the attachment filename, and downloads a file whose bytes match the original image."
+  },
+  {
+    "name": "Create a group with per-device wrapped encryption keys",
+    "viewport": "desktop",
+    "covers": [
+      "group creation",
+      "extractable temporary group-key wrapping",
+      "sender device identification in wrapped keys",
+      "per-device key wrapping",
+      "group E2EE messages",
+      "group membership access checks"
+    ],
+    "description": "An admin creates an encrypted group and a member can locate the creator device and unwrap the group key.",
+    "setup": [
+      "Register Actor A and Actor B with active devices."
+    ],
+    "steps": [
+      "Actor A creates a group containing Actor B",
+      "Actor B opens the group",
+      "Actor A sends an encrypted group message"
+    ],
+    "expected": "Group creation exports the temporary AES key for device wrapping, each wrapped key identifies its sender device, and Actor B decrypts the group message locally."
+  },
+  {
+    "name": "Establish and end a WebRTC audio/video call",
+    "viewport": "desktop",
+    "covers": [
+      "WebRTC peer connection",
+      "Appwrite offer-answer signalling",
+      "ICE/STUN/TURN configuration",
+      "microphone and camera access",
+      "call cleanup"
+    ],
+    "description": "Two users exchange call signalling and media, then release tracks when the call ends.",
+    "setup": [
+      "Register Actor A and Actor B on separate devices and grant microphone/camera permission."
+    ],
+    "steps": [
+      "Actor A starts a video call",
+      "Actor B answers the incoming call",
+      "Actor A ends the call"
+    ],
+    "expected": "A WebRTC call connects when the network permits the configured ICE path and all local media tracks stop when ended."
+  },
+  {
+    "name": "Enforce private inbox and group access on mobile",
+    "viewport": "mobile",
+    "covers": [
+      "authentication guard",
+      "device-specific inbox isolation",
+      "group membership authorization",
+      "mobile responsive layout",
+      "service worker does not cache API responses"
+    ],
+    "description": "An unauthorized client cannot fetch another account's messages or a group inbox, and API responses bypass the service-worker cache.",
+    "steps": [
+      "Open MECHAT on a mobile viewport",
+      "Sign in with a registered account",
+      "Attempt to access a conversation without valid membership"
+    ],
+    "expected": "The backend rejects unauthorized access, no plaintext message is returned, and /api/ responses are never written to the service-worker cache."
+  },
+  {
+    "name": "Review active and reserved storage providers",
+    "viewport": "mobile",
+    "covers": [
+      "Appwrite remains the active encrypted attachment storage provider",
+      "TeraBox integration reservation",
+      "Icedrive integration reservation",
+      "provider credentials are not exposed in the client"
+    ],
+    "description": "Verifies the settings page clearly distinguishes the configured Appwrite provider from the two reserved providers awaiting credentials.",
+    "steps": [
+      "Sign in to MECHAT",
+      "Open Settings & devices",
+      "Review the Storage Providers section"
+    ],
+    "expected": "Appwrite is labelled Active; TeraBox and Icedrive are labelled Reserved and explain that credentials are not configured. No secret values are displayed."
+  }
+]
