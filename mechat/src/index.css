@@ -1368,3 +1368,39 @@ button:disabled {
     padding: 13px 0;
   }
 }
+
+
+/* Original MECHAT identity */
+.brand-logo {
+  display: block;
+  object-fit: contain;
+  max-width: 100%;
+}
+.side-brand .brand-logo {
+  width: 142px;
+  height: 54px;
+}
+.auth-brand .brand-logo {
+  width: 178px;
+  height: 78px;
+}
+.mobile-brand .brand-logo {
+  width: 158px;
+  height: 70px;
+}
+.welcome-logo {
+  width: 126px;
+  height: 126px;
+  border-radius: 24px;
+  background: transparent;
+  box-shadow: none;
+}
+.welcome-logo .brand-logo {
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
+}
+.boot-logo {
+  width: min(220px, 64vw);
+  height: auto;
+}
