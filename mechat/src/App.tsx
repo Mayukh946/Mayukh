@@ -6,7 +6,7 @@ import {identity,seal,unseal,makeGroupKey,getGroupKey,groupSeal,groupOpen,saveGr
 import {storageProviders} from './storageProviders';
 import {platformProviders} from './platformProviders';
 import './index.css';
-const FC={apiKey:'AIzaSyBB6ymKhGfX86YGnMeo22Rd5hZ3X4SyVrg',authDomain:'mechat-49a5d.firebaseapp.com',projectId:'mechat-49a5d',storageBucket:'mechat-49a5d.firebasestorage.app',messagingSenderId:'254377691477',appId:'1:254377691477:web:f71a6f0c221e2e4e4147dc'};
+const FC={apiKey:'AIzaSyDeVvGYHczvP0oqijyBoA9_tbEcncmzsOc',authDomain:'chatx-b9c4b.firebaseapp.com',projectId:'chatx-b9c4b',storageBucket:'chatx-b9c4b.firebasestorage.app',messagingSenderId:'742764205086',appId:'1:742764205086:web:986a3910bc766c4799ca0f'};
 type Dev={deviceId:string;publicKey:JsonWebKey};type Chat={id:string;name:string;kind:'direct'|'group';userId?:string;groupId?:string};type Attachment={fileId:string;name:string;mime:string;size:number;iv:string;key:string};type Msg={id:string;conversationId:string;senderId:string;text?:string;fileName?:string;attachment?:Attachment;time:number;out:boolean;status?:string};
 const rid=()=>crypto.randomUUID().replace(/-/g,'');
 const directId=(a:string,b:string)=>'dm_'+[a,b].sort().join('_');
