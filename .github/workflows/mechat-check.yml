@@ -25,3 +25,5 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npx tsc --noEmit
       - run: npm run build
+      - uses: denoland/setup-deno@v2
+      - run: deno check supabase/functions/api/index.ts
