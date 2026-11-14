@@ -24,6 +24,8 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Bundle Netlify API function
         run: npx esbuild netlify/functions/api.mts --bundle --platform=node --target=node22 --outfile=/tmp/mechat-api.js
       - name: Smoke test deployed API route
