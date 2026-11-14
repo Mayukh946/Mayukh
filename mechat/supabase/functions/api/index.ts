@@ -289,21 +289,16 @@ async function handle(req: Request): Promise<Response> {
         if (!media || media.owner_id !== user.uid || media.conversation_id !== conversationId || media.status !== "uploaded") return fail(req, "The encrypted attachment is not ready to send.", 409);
       }
       const now = new Date().toISOString();
-      const { error: messageError } = await admin.from("messages").upsert({
-        id: messageId, sender_id: user.uid, sender_device_id: senderDeviceId, conversation_id: conversationId, kind, created_at: now,
-      }, { onConflict: "id", ignoreDuplicates: true });
-      if (messageError) throw messageError;
-      const { error: deliveryError } = await admin.from("message_deliveries").upsert(deliveries, { onConflict: "id", ignoreDuplicates: true });
-      if (deliveryError) throw deliveryError;
-      if (mediaFileId) {
-        const accessRows = [...new Set(deliveries.map(d => d.recipient_id))].map(recipient => ({
-          file_id: mediaFileId, user_id: recipient, owner_id: user.uid, conversation_id: conversationId,
-        }));
-        const { error } = await admin.from("media_access").upsert(accessRows, { onConflict: "file_id,user_id", ignoreDuplicates: true });
-        if (error) throw error;
-      }
+      const mediaUsers = [...new Set(deliveries.map(d => d.recipient_id))];
+      const { data: sendResult, error: sendError } = await admin.rpc("mechat_send_message", {
+        p_message: { id: messageId, sender_id: user.uid, sender_device_id: senderDeviceId, conversation_id: conversationId, kind, created_at: now },
+        p_deliveries: deliveries,
+        p_media_file_id: mediaFileId || null,
+        p_media_users: mediaUsers,
+      });
+      if (sendError) throw sendError;
       await Promise.allSettled(available.filter((d: AnyRecord) => seen.has(d.user_id + ":" + d.device_id)).map((d: AnyRecord) => notifyTopic(d.realtime_topic, "message", { messageId, conversationId })));
-      return json(req, { ok: true, messageId, queuedCopies: deliveries.length, queuedAt: now }, 201);
+      return json(req, { ok: true, messageId, queuedCopies: Number(sendResult?.queuedCopies ?? deliveries.length), queuedAt: now }, 201);
     }
 
     if (req.method === "GET" && path === "/api/messages") {
