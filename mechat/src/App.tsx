@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {getApps,initializeApp} from 'firebase/app';
 import {createUserWithEmailAndPassword,getAuth,GoogleAuthProvider,onAuthStateChanged,signInWithEmailAndPassword,signInWithPopup,signOut,User} from 'firebase/auth';
-import {CheckCheck,LockKeyhole,LogOut,MessageCircle,Mic,Paperclip,Phone,PhoneOff,Plus,Search,Send,Settings,ShieldCheck,Smartphone,Users,Video,X} from 'lucide-react';
+import {CheckCheck,LockKeyhole,LogOut,Mic,Paperclip,Phone,PhoneOff,Plus,Search,Send,Settings,ShieldCheck,Smartphone,Users,Video,X} from 'lucide-react';
 import {identity,seal,unseal,makeGroupKey,getGroupKey,groupSeal,groupOpen,saveGroupKey,Identity} from './crypto';
 import './index.css';
 const FC={apiKey:'AIzaSyDeVvGYHczvP0oqijyBoA9_tbEcncmzsOc',authDomain:'chatx-b9c4b.firebaseapp.com',projectId:'chatx-b9c4b',storageBucket:'chatx-b9c4b.firebasestorage.app',messagingSenderId:'742764205086',appId:'1:742764205086:web:986a3910bc766c4799ca0f'};
