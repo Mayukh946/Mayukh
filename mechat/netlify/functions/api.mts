@@ -523,7 +523,9 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     async ({ event, body }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      const input = (body || {}) as { fileId?: string; conversationId?: string };
+      const input = (body || {}) as { fileId?: string; conversationId?: string; deviceId?: string };
+      const activeDevice = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', input.deviceId)], 1);
+      if (!activeDevice.length) return responseError('This device is not linked to your account.', 403);
       if (!validId(input.fileId) || input.fileId.length > 36 || !validId(input.conversationId)) return responseError('Invalid media upload.');
       const conversationId = input.conversationId;
       if (conversationId.startsWith('group_')) {
@@ -560,7 +562,9 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     async ({ event, body }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      const input = (body || {}) as { fileId?: string; offset?: number; total?: number; chunk?: string };
+      const input = (body || {}) as { fileId?: string; offset?: number; total?: number; chunk?: string; deviceId?: string };
+      const activeDevice = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', input.deviceId)], 1);
+      if (!activeDevice.length) return responseError('This device is not linked to your account.', 403);
       if (!validId(input.fileId) || input.fileId.length > 36 ||
           !Number.isSafeInteger(input.offset) || (input.offset as number) < 0 ||
           !Number.isSafeInteger(input.total) || (input.total as number) < 1 || (input.total as number) > 50000000 ||
@@ -589,7 +593,9 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     async ({ event, body }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      const input = (body || {}) as { fileId?: string };
+      const input = (body || {}) as { fileId?: string; deviceId?: string };
+      const activeDevice = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', input.deviceId)], 1);
+      if (!activeDevice.length) return responseError('This device is not linked to your account.', 403);
       if (!validId(input.fileId) || input.fileId.length > 36) return responseError('Invalid media file.');
       const access = await queryRows('media_access', [
         queryEqual('file_id', input.fileId),
@@ -619,6 +625,8 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       const packets = Array.isArray(input.packets) ? input.packets as Array<{ userId: string; deviceId: string; ciphertext: string; nonce: string }> : [];
       if (!validId(messageId) || !validId(conversationId) || !validId(senderDeviceId) || !ciphertext && !packets.length) return responseError('Invalid message envelope.');
       if (packets.length > 100) return responseError('Too many recipient devices.');
+      const senderRegistered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', senderDeviceId)], 1);
+      if (!senderRegistered.length) return responseError('This device is not linked to your account.', 403);
       const isGroup = conversationId.startsWith('group_');
       let recipientIds: string[] = [];
       if (isGroup) {
@@ -752,10 +760,12 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     async ({ event, body }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      const input = (body || {}) as { groupId?: string; nameCiphertext?: string; members?: Array<{ userId: string; deviceId: string; wrappedKey: string }> };
+      const input = (body || {}) as { groupId?: string; deviceId?: string; nameCiphertext?: string; members?: Array<{ userId: string; deviceId: string; wrappedKey: string }> };
       if (!validId(input.groupId) || typeof input.nameCiphertext !== 'string' || !Array.isArray(input.members) || input.members.length < 1 || input.members.length > 100) return responseError('Invalid group setup.');
       const all = [...input.members, ...[]];
-      if (!all.some(member => member.userId === user.uid)) return responseError('Group creator must be included.', 400);
+      if (!validId(input.deviceId)) return responseError('Registered device ID required.');
+      const creatorDevice = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', input.deviceId)], 1);
+      if (!creatorDevice.length || !all.some(member => member.userId === user.uid && member.deviceId === input.deviceId)) return responseError('Group creator device is not registered.', 403);
       const now = new Date().toISOString();
       await createRow('groups', input.groupId, {
         creator_id: user.uid, name_ciphertext: input.nameCiphertext,
@@ -793,11 +803,15 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
       if (!validId(params.groupId)) return responseError('Invalid group ID.');
-      const input = (body || {}) as { newEpoch?: number; nameCiphertext?: string; members?: Array<{ userId: string; deviceId: string; wrappedKey: string; role?: string }> };
+      const input = (body || {}) as { newEpoch?: number; deviceId?: string; leave?: boolean; nameCiphertext?: string; members?: Array<{ userId: string; deviceId: string; wrappedKey: string; role?: string }> };
       const group = await getRow('groups', params.groupId);
       if (!group) return responseError('Group not found.', 404);
       const oldMembers = await queryRows('group_members', [queryEqual('group_id', params.groupId), queryEqual('active', true)], 100);
-      if (!oldMembers.some(row => row.user_id === user.uid && row.role === 'admin')) return responseError('Only a group admin can manage this group.', 403);
+      const requesterAdmin = oldMembers.some(row => row.user_id === user.uid && row.role === 'admin');
+      if (!validId(input.deviceId)) return responseError('Registered device ID required.');
+      const activeDevice = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', input.deviceId)], 1);
+      if (!activeDevice.length) return responseError('This device is not linked to your account.', 403);
+      if (!requesterAdmin && input.leave !== true) return responseError('Only a group admin can manage this group.', 403);
       if (Number(input.newEpoch) !== Number(group.key_epoch) + 1 || !Array.isArray(input.members) || input.members.length < 1 || input.members.length > 100) return responseError('Invalid group key rotation.');
       const prepared: Array<{ userId: string; deviceId: string; wrappedKey: string; role: string }> = [];
       const seen = new Set<string>();
@@ -810,7 +824,13 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         if (!registered.length) return responseError('A group member device is not registered.', 400);
         prepared.push({ userId: member.userId, deviceId: member.deviceId, wrappedKey: member.wrappedKey, role: member.role || 'member' });
       }
-      if (!prepared.some(member => member.userId === user.uid && member.role === 'admin')) return responseError('At least one current group admin must remain.', 400);
+      if (input.leave === true && !requesterAdmin) {
+        if (prepared.some(member => member.userId === user.uid) || input.nameCiphertext) return responseError('A member may only leave without changing group settings.', 403);
+        const expected = oldMembers.filter(row => row.user_id !== user.uid).map(row => String(row.user_id) + ':' + String(row.device_id)).sort();
+        const supplied = prepared.map(member => member.userId + ':' + member.deviceId).sort();
+        if (expected.length !== supplied.length || expected.some((value, index) => value !== supplied[index]) || prepared.some(member => member.role !== oldMembers.find(row => row.user_id === member.userId && row.device_id === member.deviceId)?.role)) return responseError('A member leaving cannot change other members or roles.', 403);
+      }
+      if (requesterAdmin && !prepared.some(member => member.userId === user.uid && member.role === 'admin')) return responseError('At least one current group admin must remain.', 400);
       if (!prepared.some(member => member.role === 'admin')) return responseError('A group must have at least one admin.', 400);
       const now = new Date().toISOString();
       for (const member of oldMembers) {
