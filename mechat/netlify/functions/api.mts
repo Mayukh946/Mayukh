@@ -694,7 +694,11 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
       const conversationId = query.conversationId || '';
+      const deviceId = query.deviceId || '';
       if (!validId(conversationId)) return responseError('Invalid conversation.');
+      if (!validId(deviceId)) return responseError('Registered device ID required.');
+      const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
+      if (!registered.length) return responseError('Device is not registered for this account.', 403);
       if (conversationId.startsWith('group_')) {
         const groupId = conversationId.slice(6);
         const member = await queryRows('group_members', [
@@ -702,9 +706,6 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         ], 1);
         if (!member.length) return responseError('Not a group member.', 403);
       }
-      const deviceId = query.deviceId || '';
-      if (!validId(deviceId)) return responseError('Registered device ID required.');
-      const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
       if (!registered.length) return responseError('Device is not registered for this account.', 403);
       const newestFirst = JSON.stringify({ method: 'orderDesc', attribute: 'created_at' });
       const [rows, sentRows] = await Promise.all([
