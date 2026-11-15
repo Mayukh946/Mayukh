@@ -1425,3 +1425,20 @@ button:disabled {
 .status-viewer{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
 .status-view-text{font-size:20px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;padding:18px 0}
 @media(max-width:720px){.status-panel{padding-left:12px;padding-right:12px}.status-list{max-height:125px}}
+
+/* Account and group management */
+.account-summary{display:flex;align-items:center;gap:12px;padding:12px 0 16px;border-bottom:1px solid var(--line)}
+.account-summary strong{font-size:13px}
+.account-summary p,.account-summary small{display:block;margin:3px 0;color:var(--muted);font-size:10px}
+.settings-section-title{display:flex;justify-content:space-between;align-items:center;margin:22px 0 7px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:1.2px}
+.settings-section-title small{font-size:10px;color:var(--accent)}
+.linked-device{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);min-width:0}
+.linked-device-info{flex:1;min-width:0}
+.linked-device-info strong{font-size:11px;display:block;overflow-wrap:anywhere}
+.linked-device-info p{font-size:9px;color:var(--muted);margin:4px 0 0;overflow-wrap:anywhere}
+.current-device-tag{font-size:8px;background:#284c41;color:#a8f0cd;padding:3px 5px;border-radius:4px;white-space:nowrap}
+.danger-icon{color:#ff9caa}
+.group-manager{width:min(100%,560px)}
+.group-member-actions{display:flex;gap:2px;flex:0 0 auto}
+.group-security-note{margin-top:16px}
+@media(max-width:620px){.group-member-actions .icon-btn{width:34px;height:34px}.linked-device{gap:8px}}
