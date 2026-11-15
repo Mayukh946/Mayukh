@@ -647,7 +647,6 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         ], 1);
         if (!member.length) return responseError('Not a group member.', 403);
       }
-      await ensureTable('statuses');
       const deviceId = query.deviceId || '';
       if (!validId(deviceId)) return responseError('Registered device ID required.');
       const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
@@ -892,6 +891,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     async ({ event, query }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
+      await ensureTable('statuses');
       const deviceId = query.deviceId || '';
       if (!validId(deviceId)) return responseError('Registered device ID is required.');
       const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
