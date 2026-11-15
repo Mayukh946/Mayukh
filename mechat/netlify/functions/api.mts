@@ -55,6 +55,7 @@ const schemas: Record<string, Array<{ key: string; type: string; size?: number; 
     { key: 'public_key', type: 'longtext', required: true },
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'last_seen', type: 'datetime', required: true },
+    { key: 'device_name', type: 'varchar', size: 120 },
   ],
   messages: [
     { key: 'message_id', type: 'varchar', size: 128, required: true },
@@ -461,15 +462,50 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     async ({ event, body }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      const input = (body || {}) as { deviceId?: string; publicKey?: string };
+      const input = (body || {}) as { deviceId?: string; publicKey?: string; deviceName?: string };
+      await ensureTable('devices');
       if (!validId(input.deviceId) || typeof input.publicKey !== 'string' || input.publicKey.length > 4096) return responseError('Invalid device registration.');
       const now = new Date().toISOString();
       const id = await stableId(`${user.uid}:${input.deviceId}`);
       await upsertRow('devices', id, {
         user_id: user.uid, device_id: input.deviceId, public_key: input.publicKey,
-        created_at: now, last_seen: now,
+        created_at: now, last_seen: now, device_name: typeof input.deviceName === 'string' ? input.deviceName.slice(0, 120) : 'MECHAT device',
       });
       return json({ ok: true, deviceId: input.deviceId });
+    },
+  ],
+  'GET /api/devices': [
+    async ({ event }) => {
+      const user = await authenticate(event);
+      if (!user) return responseError('Authentication required.', 401);
+      await ensureTable('devices');
+      const rows = await queryRows('devices', [queryEqual('user_id', user.uid)], 50);
+      return json({ ok: true, devices: rows.map(row => ({
+        deviceId: row.device_id, deviceName: row.device_name || 'MECHAT device',
+        createdAt: row.created_at, lastSeen: row.last_seen,
+      })) });
+    },
+  ],
+  'DELETE /api/devices/:deviceId': [
+    async ({ event, params }) => {
+      const user = await authenticate(event);
+      if (!user) return responseError('Authentication required.', 401);
+      if (!validId(params.deviceId)) return responseError('Invalid device ID.');
+      const matches = await queryRows('devices', [
+        queryEqual('user_id', user.uid), queryEqual('device_id', params.deviceId),
+      ], 1);
+      if (!matches.length) return responseError('This device is not linked to your account.', 404);
+      const rowId = await stableId(user.uid + ':' + params.deviceId);
+      const memberships = await queryRows('group_members', [
+        queryEqual('user_id', user.uid), queryEqual('device_id', params.deviceId), queryEqual('active', true),
+      ], 100);
+      for (const member of memberships) {
+        const memberId = await stableId(String(member.group_id) + ':' + user.uid + ':' + params.deviceId);
+        await patchRow('group_members', memberId, { active: false });
+      }
+      const deleted = await appwriteRequest(path('devices', '/rows/' + encodeURIComponent(rowId)), 'DELETE');
+      if (!deleted.response.ok && deleted.response.status !== 404) return responseError('Could not unlink this device.', 503);
+      return json({ ok: true, deviceId: params.deviceId });
     },
   ],
   'GET /api/devices/:userId': [
@@ -760,29 +796,32 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       const input = (body || {}) as { newEpoch?: number; nameCiphertext?: string; members?: Array<{ userId: string; deviceId: string; wrappedKey: string; role?: string }> };
       const group = await getRow('groups', params.groupId);
       if (!group) return responseError('Group not found.', 404);
-      const admin = await queryRows('group_members', [queryEqual('group_id', params.groupId), queryEqual('user_id', user.uid), queryEqual('active', true)], 10);
-      if (!admin.some(row => row.role === 'admin')) return responseError('Only a group admin can rotate group keys.', 403);
-      if (Number(input.newEpoch) !== Number(group.key_epoch) + 1 || !Array.isArray(input.members) || input.members.length < 1 || input.members.length > 100) return responseError('Invalid group key rotation.');
-      const now = new Date().toISOString();
       const oldMembers = await queryRows('group_members', [queryEqual('group_id', params.groupId), queryEqual('active', true)], 100);
-      for (const member of oldMembers) {
-        const id = await stableId(params.groupId + ':' + member.user_id + ':' + member.device_id);
-        await patchRow('group_members', id, { active: false });
-      }
+      if (!oldMembers.some(row => row.user_id === user.uid && row.role === 'admin')) return responseError('Only a group admin can manage this group.', 403);
+      if (Number(input.newEpoch) !== Number(group.key_epoch) + 1 || !Array.isArray(input.members) || input.members.length < 1 || input.members.length > 100) return responseError('Invalid group key rotation.');
+      const prepared: Array<{ userId: string; deviceId: string; wrappedKey: string; role: string }> = [];
       const seen = new Set<string>();
       for (const member of input.members) {
-        if (!validId(member.userId) || !validId(member.deviceId) || typeof member.wrappedKey !== 'string' || member.wrappedKey.length > 10000) return responseError('Invalid member key envelope.');
+        if (!validId(member.userId) || !validId(member.deviceId) || typeof member.wrappedKey !== 'string' || member.wrappedKey.length > 10000 || !['admin', 'member'].includes(member.role || 'member')) return responseError('Invalid member key envelope.');
         const unique = member.userId + ':' + member.deviceId;
         if (seen.has(unique)) return responseError('Duplicate member device.');
         seen.add(unique);
         const registered = await queryRows('devices', [queryEqual('user_id', member.userId), queryEqual('device_id', member.deviceId)], 1);
         if (!registered.length) return responseError('A group member device is not registered.', 400);
+        prepared.push({ userId: member.userId, deviceId: member.deviceId, wrappedKey: member.wrappedKey, role: member.role || 'member' });
+      }
+      if (!prepared.some(member => member.userId === user.uid && member.role === 'admin')) return responseError('At least one current group admin must remain.', 400);
+      if (!prepared.some(member => member.role === 'admin')) return responseError('A group must have at least one admin.', 400);
+      const now = new Date().toISOString();
+      for (const member of oldMembers) {
+        const id = await stableId(params.groupId + ':' + member.user_id + ':' + member.device_id);
+        await patchRow('group_members', id, { active: false });
+      }
+      for (const member of prepared) {
         const id = await stableId(params.groupId + ':' + member.userId + ':' + member.deviceId);
-        const oldRole = oldMembers.find(row => row.user_id === member.userId)?.role;
         await upsertRow('group_members', id, {
           group_id: params.groupId, user_id: member.userId, device_id: member.deviceId,
-          role: oldRole === 'admin' ? 'admin' : (member.role === 'admin' ? 'admin' : 'member'),
-          wrapped_key: member.wrappedKey, joined_at: now, active: true,
+          role: member.role, wrapped_key: member.wrappedKey, joined_at: now, active: true,
         });
       }
       await patchRow('groups', params.groupId, {
@@ -804,9 +843,19 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       const members = await queryRows('group_members', [
         queryEqual('group_id', groupId), queryEqual('active', true),
       ], 100);
-      return json({ ok: true, members: members.map(member => ({
-        userId: member.user_id, deviceId: member.device_id, role: member.role, wrappedKey: member.wrapped_key,
-      })) });
+      const profiles = new Map<string, Row>();
+      await Promise.all([...new Set(members.map(member => String(member.user_id)))].map(async uid => {
+        const profile = await getRow('profiles', uid);
+        if (profile) profiles.set(uid, profile);
+      }));
+      return json({ ok: true, members: members.map(member => {
+        const profile = profiles.get(String(member.user_id));
+        return {
+          userId: member.user_id, deviceId: member.device_id, role: member.role,
+          wrappedKey: member.wrapped_key, displayName: profile?.display_name || profile?.email || 'MECHAT member',
+          email: profile?.email || '',
+        };
+      }) });
     },
   ],
   'POST /api/calls/signals': [
