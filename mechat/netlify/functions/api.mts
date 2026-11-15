@@ -323,7 +323,6 @@ async function uploadEncryptedMediaChunk(fileId: string, offset: number, total: 
   form.append('fileId', fileId);
   // The object is AES-GCM ciphertext; its decryption key and original file metadata
   // are delivered only inside the encrypted message envelope.
-  form.append('permissions[]', 'read("any")');
   // AES-GCM ciphertext is opaque binary data, not a JPEG/MP4/PDF.
   // Never label ciphertext with the source file's MIME type or a false media extension.
   form.append('file', new Blob([bytes], { type: 'application/octet-stream' }), 'encrypted.bin');
@@ -648,15 +647,36 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       if (!validId(deviceId)) return responseError('Registered device ID required.');
       const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
       if (!registered.length) return responseError('Device is not registered for this account.', 403);
-      const rows = await queryRows('messages', [
-        queryEqual('recipient_id', user.uid), queryEqual('recipient_device_id', deviceId), queryEqual('conversation_id', conversationId),
-      ], 100);
-      return json({ ok: true, messages: rows.map(row => ({
-        rowId: row.$id, messageId: row.message_id, senderId: row.sender_id,
-        recipientDeviceId: row.recipient_device_id, senderDeviceId: row.sender_device_id,
-        kind: row.kind, ciphertext: row.ciphertext, nonce: row.nonce,
-        createdAt: row.created_at, deliveryStatus: row.delivery_status,
-      })) });
+      const newestFirst = JSON.stringify({ method: 'orderDesc', attribute: 'created_at' });
+      const [rows, sentRows] = await Promise.all([
+        queryRows('messages', [
+          queryEqual('recipient_id', user.uid), queryEqual('recipient_device_id', deviceId),
+          queryEqual('conversation_id', conversationId), newestFirst,
+        ], 100),
+        queryRows('messages', [
+          queryEqual('sender_id', user.uid), queryEqual('conversation_id', conversationId), newestFirst,
+        ], 100),
+      ]);
+      const rank: Record<string, number> = { queued: 0, delivered: 1, seen: 2 };
+      const statusByMessage = new Map<string, string>();
+      for (const row of sentRows) {
+        if (row.recipient_id === user.uid) continue;
+        const id = String(row.message_id || '');
+        const status = String(row.delivery_status || 'queued');
+        if (id && (rank[status] ?? 0) > (rank[statusByMessage.get(id) || 'queued'] ?? 0)) {
+          statusByMessage.set(id, status);
+        }
+      }
+      return json({
+        ok: true,
+        messages: rows.map(row => ({
+          rowId: row.$id, messageId: row.message_id, senderId: row.sender_id,
+          recipientDeviceId: row.recipient_device_id, senderDeviceId: row.sender_device_id,
+          kind: row.kind, ciphertext: row.ciphertext, nonce: row.nonce,
+          createdAt: row.created_at, deliveryStatus: row.delivery_status,
+        })).reverse(),
+        sentStatuses: [...statusByMessage].map(([messageId, status]) => ({ messageId, status })),
+      });
     },
   ],
   'GET /api/messages/:messageId/status': [
