@@ -825,12 +825,12 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         prepared.push({ userId: member.userId, deviceId: member.deviceId, wrappedKey: member.wrappedKey, role: member.role || 'member' });
       }
       if (input.leave === true && !requesterAdmin) {
-        if (prepared.some(member => member.userId === user.uid) || input.nameCiphertext) return responseError('A member may only leave without changing group settings.', 403);
+        if (prepared.some(member => member.userId === user.uid)) return responseError('A member may only leave without changing group settings.', 403);
         const expected = oldMembers.filter(row => row.user_id !== user.uid).map(row => String(row.user_id) + ':' + String(row.device_id)).sort();
         const supplied = prepared.map(member => member.userId + ':' + member.deviceId).sort();
         if (expected.length !== supplied.length || expected.some((value, index) => value !== supplied[index]) || prepared.some(member => member.role !== oldMembers.find(row => row.user_id === member.userId && row.device_id === member.deviceId)?.role)) return responseError('A member leaving cannot change other members or roles.', 403);
       }
-      if (requesterAdmin && !prepared.some(member => member.userId === user.uid && member.role === 'admin')) return responseError('At least one current group admin must remain.', 400);
+      if (requesterAdmin && input.leave !== true && !prepared.some(member => member.userId === user.uid && member.role === 'admin')) return responseError('At least one current group admin must remain.', 400);
       if (!prepared.some(member => member.role === 'admin')) return responseError('A group must have at least one admin.', 400);
       const now = new Date().toISOString();
       for (const member of oldMembers) {
