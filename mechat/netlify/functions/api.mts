@@ -360,9 +360,11 @@ async function uploadEncryptedMediaChunk(fileId: string, offset: number, total: 
 
 const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
   'GET /api/calls/ice': [
-    async ({ event }) => {
+    async ({ event, query }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
+      const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', query.deviceId || '')], 1);
+      if (!registered.length) return responseError('This device is not linked to your account.', 403);
       const turnUrl = Netlify.env.get('TURN_URL') || '';
       const sharedSecret = Netlify.env.get('TURN_SHARED_SECRET') || '';
       const iceServers: Array<Record<string, unknown>> = [
@@ -475,10 +477,12 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     },
   ],
   'GET /api/devices': [
-    async ({ event }) => {
+    async ({ event, query }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
       await ensureTable('devices');
+      const currentDevice = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', query.deviceId || '')], 1);
+      if (!currentDevice.length) return responseError('This device is not linked to your account.', 403);
       const rows = await queryRows('devices', [queryEqual('user_id', user.uid)], 50);
       return json({ ok: true, devices: rows.map(row => ({
         deviceId: row.device_id, deviceName: row.device_name || 'MECHAT device',
@@ -487,10 +491,12 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     },
   ],
   'DELETE /api/devices/:deviceId': [
-    async ({ event, params }) => {
+    async ({ event, params, query }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      if (!validId(params.deviceId)) return responseError('Invalid device ID.');
+      if (!validId(params.deviceId) || !validId(query.requestDeviceId)) return responseError('Invalid device ID.');
+      const requester = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', query.requestDeviceId)], 1);
+      if (!requester.length) return responseError('This device is not linked to your account.', 403);
       const matches = await queryRows('devices', [
         queryEqual('user_id', user.uid), queryEqual('device_id', params.deviceId),
       ], 1);
@@ -902,6 +908,8 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       if (!user) return responseError('Authentication required.', 401);
       const deviceId = query.deviceId || '';
       if (!validId(deviceId)) return responseError('Device ID required.');
+      const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
+      if (!registered.length) return responseError('This device is not linked to your account.', 403);
       const rows = await queryRows('call_signals', [
         queryEqual('recipient_id', user.uid),
         queryEqual('recipient_device_id', deviceId),
@@ -912,9 +920,12 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       })) });
     },
   ],
-  'DELETE /api/calls/signals/:signalId': [    async ({ event, params }) => {
+  'DELETE /api/calls/signals/:signalId': [    async ({ event, params, query }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
+      const deviceId = query.deviceId || '';
+      const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
+      if (!registered.length) return responseError('This device is not linked to your account.', 403);
       const row = await getRow('call_signals', params.signalId);
       if (!row || row.recipient_id !== user.uid) return responseError('Signal not found.', 404);
       const result = await appwriteRequest(path('call_signals', `/rows/${encodeURIComponent(params.signalId)}`), 'DELETE');

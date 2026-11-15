@@ -24,6 +24,8 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run build
+      - name: TypeScript validation
+        run: npx tsc --noEmit
       - name: Audit production dependencies
         run: |
           npm audit --omit=dev --audit-level=critical
