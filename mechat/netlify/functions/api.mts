@@ -647,7 +647,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         ], 1);
         if (!member.length) return responseError('Not a group member.', 403);
       }
-      const deviceId = query.deviceId || '';
+      await ensureTable('statuses');\n      const deviceId = query.deviceId || '';
       if (!validId(deviceId)) return responseError('Registered device ID required.');
       const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
       if (!registered.length) return responseError('Device is not registered for this account.', 403);
@@ -857,14 +857,14 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     async ({ event, body }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      const input = (body || {}) as { statusId?: string; expiresAt?: number; packets?: Array<{ userId: string; deviceId: string; ciphertext: string; nonce: string }> };
+      const input = (body || {}) as { statusId?: string; expiresAt?: number; packets?: Array<{ userId: string; deviceId: string; senderDeviceId: string; ciphertext: string; nonce: string }> };
       if (!validId(input.statusId) || !Array.isArray(input.packets) || input.packets.length < 1 || input.packets.length > 100) return responseError('Invalid status update.');
       const expiresAt = Number(input.expiresAt || 0);
       if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() || expiresAt > Date.now() + 24 * 60 * 60 * 1000 + 60000) return responseError('Status expiry must be within the next 24 hours.');
-      const senderDevice = await queryRows('devices', [queryEqual('user_id', user.uid)], 100);
+      await ensureTable('statuses');
       const now = new Date().toISOString(), seen = new Set<string>();
       for (const packet of input.packets) {
-        if (!validId(packet.userId) || !validId(packet.deviceId) || typeof packet.ciphertext !== 'string' || typeof packet.nonce !== 'string') return responseError('Invalid encrypted status packet.');
+        if (!validId(packet.userId) || !validId(packet.deviceId) || !validId(packet.senderDeviceId) || typeof packet.ciphertext !== 'string' || typeof packet.nonce !== 'string') return responseError('Invalid encrypted status packet.');
         const unique = packet.userId + ':' + packet.deviceId;
         if (seen.has(unique)) continue;
         seen.add(unique);
@@ -874,11 +874,11 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         }
         const registered = await queryRows('devices', [queryEqual('user_id', packet.userId), queryEqual('device_id', packet.deviceId)], 1);
         if (!registered.length) return responseError('A status recipient device is not registered.', 403);
-        if (!senderDevice.length) return responseError('Register this device before sharing a status.', 403);
+        const senderRegistered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', packet.senderDeviceId)], 1);\n        if (!senderRegistered.length) return responseError('Register this device before sharing a status.', 403);
         const rowId = await stableId(input.statusId + ':' + packet.userId + ':' + packet.deviceId);
         await createRow('statuses', rowId, {
           user_id: user.uid, status_id: input.statusId, recipient_id: packet.userId,
-          recipient_device_id: packet.deviceId, sender_device_id: String(senderDevice[0].device_id),
+          recipient_device_id: packet.deviceId, sender_device_id: packet.senderDeviceId,
           ciphertext: packet.ciphertext, nonce: packet.nonce,
           created_at: now, expires_at: new Date(expiresAt).toISOString(),
         });
