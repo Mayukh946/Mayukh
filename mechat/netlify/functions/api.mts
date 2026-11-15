@@ -197,6 +197,26 @@ async function ensureStorageBucket() {
   const bucketPath = `/storage/buckets/${encodeURIComponent(bucketId)}`;
   const current = await appwriteRequest(bucketPath);
   if (current.response.ok) {
+    // Ciphertext has no original file signature, so store it as an opaque binary object.
+    // Keep the existing bucket configuration and add the .bin extension if necessary.
+    const existing = current.data as Record<string, any>;
+    const extensions = Array.isArray(existing.allowedFileExtensions)
+      ? existing.allowedFileExtensions.map((value: unknown) => String(value).toLowerCase())
+      : [];
+    if (!extensions.includes('bin')) {
+      const updated = await appwriteRequest(bucketPath, 'PUT', {
+        name: String(existing.name || 'MECHAT Media'),
+        permissions: Array.isArray(existing.$permissions) ? existing.$permissions : [],
+        fileSecurity: existing.fileSecurity !== false,
+        enabled: existing.enabled !== false,
+        maximumFileSize: Number(existing.maximumFileSize || 50000000),
+        allowedFileExtensions: [...new Set([...extensions, 'bin'])],
+      });
+      if (!updated.response.ok) {
+        const detail = typeof updated.data.message === 'string' ? updated.data.message : JSON.stringify(updated.data);
+        throw new Error(`Appwrite could not enable encrypted binary attachments (${updated.response.status}): ${detail}`);
+      }
+    }
     return { bucketId, created: false, exists: true };
   }
   if (current.response.status !== 404) {
@@ -208,7 +228,7 @@ async function ensureStorageBucket() {
     fileSecurity: true,
     enabled: true,
     maximumFileSize: 50000000,
-    allowedFileExtensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov', 'mp3', 'm4a', 'ogg', 'wav', 'pdf'],
+    allowedFileExtensions: ['bin', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm', 'mov', 'mp3', 'm4a', 'ogg', 'wav', 'pdf'],
   });
   if (!created.response.ok && created.response.status !== 409) {
     const detail = typeof created.data.message === 'string' ? created.data.message : JSON.stringify(created.data);
@@ -304,8 +324,9 @@ async function uploadEncryptedMediaChunk(fileId: string, offset: number, total: 
   // The object is AES-GCM ciphertext; its decryption key and original file metadata
   // are delivered only inside the encrypted message envelope.
   form.append('permissions[]', 'read("any")');
-  // Appwrite validates the stored filename extension against the bucket allowlist.
-  form.append('file', new Blob([bytes], { type: 'image/jpeg' }), 'encrypted.jpg');
+  // AES-GCM ciphertext is opaque binary data, not a JPEG/MP4/PDF.
+  // Never label ciphertext with the source file's MIME type or a false media extension.
+  form.append('file', new Blob([bytes], { type: 'application/octet-stream' }), 'encrypted.bin');
   // Appwrite expects a normal multipart upload for files up to 5 MB.
   // Larger files use resumable 5 MB chunks with byte-accurate range headers.
   const chunked = total > 5 * 1024 * 1024;
@@ -483,6 +504,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         ], 1);
         if (!contact.length) return responseError('This conversation is not in your contacts.', 403);
       }
+      await ensureStorageBucket();
       await ensureTable('media_access');
       const rowId = await stableId(`${input.fileId}:${user.uid}`);
       await createRow('media_access', rowId, {
