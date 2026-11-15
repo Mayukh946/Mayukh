@@ -872,6 +872,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
       const groupId = params.groupId;
+      if (!validId(groupId)) return responseError('Invalid group ID.');
       const deviceId = query.deviceId || '';
       const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
       if (!registered.length) return responseError('This device is not linked to your account.', 403);
