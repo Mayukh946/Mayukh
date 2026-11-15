@@ -538,6 +538,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         const membership = await queryRows('group_members', [
           queryEqual('group_id', conversationId.slice(6)),
           queryEqual('user_id', user.uid),
+          queryEqual('device_id', input.deviceId),
           queryEqual('active', true),
         ], 1);
         if (!membership.length) return responseError('You are not a member of this group.', 403);
@@ -638,7 +639,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       if (isGroup) {
         const groupId = conversationId.slice(6);
         const membership = await queryRows('group_members', [
-          queryEqual('group_id', groupId), queryEqual('user_id', user.uid), queryEqual('active', true),
+          queryEqual('group_id', groupId), queryEqual('user_id', user.uid), queryEqual('device_id', senderDeviceId), queryEqual('active', true),
         ], 1);
         if (!membership.length) return responseError('You are not a member of this group.', 403);
         const members = await queryRows('group_members', [
@@ -790,11 +791,14 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     },
   ],
   'GET /api/groups': [
-    async ({ event }) => {
+    async ({ event, query }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
+      const deviceId = query.deviceId || '';
+      const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
+      if (!registered.length) return responseError('This device is not linked to your account.', 403);
       const memberships = await queryRows('group_members', [
-        queryEqual('user_id', user.uid), queryEqual('active', true),
+        queryEqual('user_id', user.uid), queryEqual('device_id', deviceId), queryEqual('active', true),
       ], 100);
       const groupIds = [...new Set(memberships.map(row => String(row.group_id || '')))].filter(Boolean);
       const groups = await Promise.all(groupIds.map(groupId => getRow('groups', groupId)));
@@ -813,7 +817,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       const group = await getRow('groups', params.groupId);
       if (!group) return responseError('Group not found.', 404);
       const oldMembers = await queryRows('group_members', [queryEqual('group_id', params.groupId), queryEqual('active', true)], 100);
-      const requesterAdmin = oldMembers.some(row => row.user_id === user.uid && row.role === 'admin');
+      const requesterAdmin = oldMembers.some(row => row.user_id === user.uid && row.device_id === input.deviceId && row.role === 'admin');
       if (!validId(input.deviceId)) return responseError('Registered device ID required.');
       const activeDevice = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', input.deviceId)], 1);
       if (!activeDevice.length) return responseError('This device is not linked to your account.', 403);
@@ -830,6 +834,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         if (!registered.length) return responseError('A group member device is not registered.', 400);
         prepared.push({ userId: member.userId, deviceId: member.deviceId, wrappedKey: member.wrappedKey, role: member.role || 'member' });
       }
+      if (input.leave === true && !requesterAdmin && !oldMembers.some(row => row.user_id === user.uid && row.device_id === input.deviceId)) return responseError('This device is not an active group member.', 403);
       if (input.leave === true && !requesterAdmin) {
         if (prepared.some(member => member.userId === user.uid)) return responseError('A member may only leave without changing group settings.', 403);
         const expected = oldMembers.filter(row => row.user_id !== user.uid).map(row => String(row.user_id) + ':' + String(row.device_id)).sort();
@@ -858,12 +863,15 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     },
   ],
   'GET /api/groups/:groupId/members': [
-    async ({ event, params }) => {
+    async ({ event, params, query }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
       const groupId = params.groupId;
+      const deviceId = query.deviceId || '';
+      const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
+      if (!registered.length) return responseError('This device is not linked to your account.', 403);
       const membership = await queryRows('group_members', [
-        queryEqual('group_id', groupId), queryEqual('user_id', user.uid), queryEqual('active', true),
+        queryEqual('group_id', groupId), queryEqual('user_id', user.uid), queryEqual('device_id', deviceId), queryEqual('active', true),
       ], 1);
       if (!membership.length) return responseError('Not a group member.', 403);
       const members = await queryRows('group_members', [
