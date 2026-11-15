@@ -647,7 +647,8 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         ], 1);
         if (!member.length) return responseError('Not a group member.', 403);
       }
-      await ensureTable('statuses');\n      const deviceId = query.deviceId || '';
+      await ensureTable('statuses');
+      const deviceId = query.deviceId || '';
       if (!validId(deviceId)) return responseError('Registered device ID required.');
       const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
       if (!registered.length) return responseError('Device is not registered for this account.', 403);
@@ -874,7 +875,8 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
         }
         const registered = await queryRows('devices', [queryEqual('user_id', packet.userId), queryEqual('device_id', packet.deviceId)], 1);
         if (!registered.length) return responseError('A status recipient device is not registered.', 403);
-        const senderRegistered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', packet.senderDeviceId)], 1);\n        if (!senderRegistered.length) return responseError('Register this device before sharing a status.', 403);
+        const senderRegistered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', packet.senderDeviceId)], 1);
+        if (!senderRegistered.length) return responseError('Register this device before sharing a status.', 403);
         const rowId = await stableId(input.statusId + ':' + packet.userId + ':' + packet.deviceId);
         await createRow('statuses', rowId, {
           user_id: user.uid, status_id: input.statusId, recipient_id: packet.userId,
