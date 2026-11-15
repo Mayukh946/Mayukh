@@ -1,7 +1,18 @@
 const json = (value: unknown, status = 200) => Response.json(value, { status });
+
+// Cloudflare Workers supplies bindings through the fetch handler. Netlify continues
+// to use its native environment API, so the existing deployment remains compatible.
+let workerEnvironment: Record<string, string | undefined> | null = null;
+export function setWorkerEnvironment(environment: Record<string, string | undefined>) {
+ workerEnvironment = environment;
+}
+function runtimeEnv(name: string): string {
+ if (workerEnvironment) return workerEnvironment[name] || '';
+ return Netlify.env.get(name) || '';
+}
 function getSecret(name: string): string {
- const value = Netlify.env.get(name);
- if (!value) throw new Error(`Missing required Netlify environment variable: ${name}`);
+ const value = runtimeEnv(name);
+ if (!value) throw new Error(`Missing required environment variable: ${name}`);
  return value;
 }
 
@@ -365,8 +376,8 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       if (!user) return responseError('Authentication required.', 401);
       const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', query.deviceId || '')], 1);
       if (!registered.length) return responseError('This device is not linked to your account.', 403);
-      const turnUrl = Netlify.env.get('TURN_URL') || '';
-      const sharedSecret = Netlify.env.get('TURN_SHARED_SECRET') || '';
+      const turnUrl = runtimeEnv('TURN_URL');
+      const sharedSecret = runtimeEnv('TURN_SHARED_SECRET');
       const iceServers: Array<Record<string, unknown>> = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
