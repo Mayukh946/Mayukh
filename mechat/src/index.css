@@ -1404,3 +1404,24 @@ button:disabled {
   width: min(220px, 64vw);
   height: auto;
 }
+
+/* Encrypted 24-hour status updates */
+.status-panel{padding:8px 14px 12px;border-bottom:1px solid var(--line)}
+.status-panel-head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 9px;color:var(--muted);font-size:10px;letter-spacing:1.2px;font-weight:800}
+.status-panel-head button{display:flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--accent);font:inherit;letter-spacing:0;cursor:pointer}
+.status-panel-head button svg{width:14px;height:14px}
+.status-list{display:flex;flex-direction:column;gap:4px;max-height:170px;overflow:auto}
+.status-item{display:flex;align-items:center;gap:10px;width:100%;padding:5px 3px;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;border-radius:10px}
+.status-item:hover{background:var(--panel2)}
+.status-item>span:last-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.status-item b{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-item small,.status-empty{font-size:10px;color:var(--muted)}
+.status-ring{width:34px;height:34px;flex:0 0 34px;border-radius:50%;padding:2px;border:2px solid var(--accent);display:grid;place-items:center}
+.status-ring>span{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;background:var(--panel2);font-size:12px;font-weight:700}
+.status-empty{display:block;padding:4px 0 7px}
+.status-compose-footer{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.status-compose-footer small{color:var(--muted)}
+.status-compose-footer button{display:flex;align-items:center;gap:7px}
+.status-viewer{min-height:220px;display:flex;flex-direction:column;justify-content:space-between}
+.status-view-text{font-size:20px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;padding:18px 0}
+@media(max-width:720px){.status-panel{padding-left:12px;padding-right:12px}.status-list{max-height:125px}}

@@ -89,6 +89,10 @@ const schemas: Record<string, Array<{ key: string; type: string; size?: number; 
   ],
   statuses: [
     { key: 'user_id', type: 'varchar', size: 128, required: true },
+    { key: 'status_id', type: 'varchar', size: 128 },
+    { key: 'recipient_id', type: 'varchar', size: 128 },
+    { key: 'recipient_device_id', type: 'varchar', size: 128 },
+    { key: 'sender_device_id', type: 'varchar', size: 128 },
     { key: 'ciphertext', type: 'longtext', required: true },
     { key: 'nonce', type: 'varchar', size: 128, required: true },
     { key: 'created_at', type: 'datetime', required: true },
@@ -127,7 +131,7 @@ const indexes: Record<string, Array<{ key: string; type: string; columns: string
     { key: 'member_lookup', type: 'key', columns: ['user_id', 'active'] },
     { key: 'group_lookup', type: 'key', columns: ['group_id', 'active'] },
   ],
-  statuses: [{ key: 'status_expiry', type: 'key', columns: ['user_id', 'expires_at'] }],
+  statuses: [{ key: 'status_recipient_expiry', type: 'key', columns: ['recipient_id', 'recipient_device_id', 'expires_at'] }],
   call_signals: [{ key: 'call_recipient', type: 'key', columns: ['recipient_device_id', 'expires_at'] }],
   media_access: [{ key: 'media_user_lookup', type: 'key', columns: ['file_id', 'user_id'] }],
 };
@@ -853,25 +857,48 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
     async ({ event, body }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      const input = (body || {}) as { statusId?: string; ciphertext?: string; nonce?: string; expiresAt?: number };
-      if (!validId(input.statusId) || typeof input.ciphertext !== 'string' || typeof input.nonce !== 'string') return responseError('Invalid status.');
-      const now = new Date();
-      await createRow('statuses', input.statusId, {
-        user_id: user.uid, ciphertext: input.ciphertext, nonce: input.nonce,
-        created_at: now.toISOString(), expires_at: iso(input.expiresAt),
-      });
+      const input = (body || {}) as { statusId?: string; expiresAt?: number; packets?: Array<{ userId: string; deviceId: string; ciphertext: string; nonce: string }> };
+      if (!validId(input.statusId) || !Array.isArray(input.packets) || input.packets.length < 1 || input.packets.length > 100) return responseError('Invalid status update.');
+      const expiresAt = Number(input.expiresAt || 0);
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() || expiresAt > Date.now() + 24 * 60 * 60 * 1000 + 60000) return responseError('Status expiry must be within the next 24 hours.');
+      const senderDevice = await queryRows('devices', [queryEqual('user_id', user.uid)], 100);
+      const now = new Date().toISOString(), seen = new Set<string>();
+      for (const packet of input.packets) {
+        if (!validId(packet.userId) || !validId(packet.deviceId) || typeof packet.ciphertext !== 'string' || typeof packet.nonce !== 'string') return responseError('Invalid encrypted status packet.');
+        const unique = packet.userId + ':' + packet.deviceId;
+        if (seen.has(unique)) continue;
+        seen.add(unique);
+        if (packet.userId !== user.uid) {
+          const contact = await queryRows('contacts', [queryEqual('owner_id', user.uid), queryEqual('contact_user_id', packet.userId)], 1);
+          if (!contact.length) return responseError('Statuses can only be shared with your contacts.', 403);
+        }
+        const registered = await queryRows('devices', [queryEqual('user_id', packet.userId), queryEqual('device_id', packet.deviceId)], 1);
+        if (!registered.length) return responseError('A status recipient device is not registered.', 403);
+        if (!senderDevice.length) return responseError('Register this device before sharing a status.', 403);
+        const rowId = await stableId(input.statusId + ':' + packet.userId + ':' + packet.deviceId);
+        await createRow('statuses', rowId, {
+          user_id: user.uid, status_id: input.statusId, recipient_id: packet.userId,
+          recipient_device_id: packet.deviceId, sender_device_id: String(senderDevice[0].device_id),
+          ciphertext: packet.ciphertext, nonce: packet.nonce,
+          created_at: now, expires_at: new Date(expiresAt).toISOString(),
+        });
+      }
       return json({ ok: true, statusId: input.statusId }, 201);
     },
   ],
   'GET /api/statuses': [
-    async ({ event }) => {
+    async ({ event, query }) => {
       const user = await authenticate(event);
       if (!user) return responseError('Authentication required.', 401);
-      const rows = await queryRows('statuses', [], 100);
+      const deviceId = query.deviceId || '';
+      if (!validId(deviceId)) return responseError('Registered device ID is required.');
+      const registered = await queryRows('devices', [queryEqual('user_id', user.uid), queryEqual('device_id', deviceId)], 1);
+      if (!registered.length) return responseError('Device is not registered.', 403);
+      const rows = await queryRows('statuses', [queryEqual('recipient_id', user.uid), queryEqual('recipient_device_id', deviceId)], 100);
       const active = rows.filter(row => new Date(String(row.expires_at)).getTime() > Date.now());
       return json({ ok: true, statuses: active.map(row => ({
-        statusId: row.$id, userId: row.user_id, ciphertext: row.ciphertext,
-        nonce: row.nonce, createdAt: row.created_at, expiresAt: row.expires_at,
+        statusId: row.status_id, userId: row.user_id, senderDeviceId: row.sender_device_id,
+        ciphertext: row.ciphertext, nonce: row.nonce, createdAt: row.created_at, expiresAt: row.expires_at,
       })) });
     },
   ],
