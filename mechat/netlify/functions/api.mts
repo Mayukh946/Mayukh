@@ -636,6 +636,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       if (!senderRegistered.length) return responseError('This device is not linked to your account.', 403);
       const isGroup = conversationId.startsWith('group_');
       let recipientIds: string[] = [];
+      let allowedRecipientDevices = new Set<string>();
       if (isGroup) {
         const groupId = conversationId.slice(6);
         const membership = await queryRows('group_members', [
@@ -646,14 +647,17 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
           queryEqual('group_id', groupId), queryEqual('active', true),
         ], 100);
         recipientIds = [...new Set(members.map(member => String(member.user_id || '')))].filter(Boolean);
+        allowedRecipientDevices = new Set(members.map(member => String(member.user_id) + ':' + String(member.device_id)));
       } else {
         if (!validId(recipientId) || recipientId === user.uid) return responseError('Invalid recipient.');
         recipientIds = [recipientId, user.uid];
+        const registeredRecipients = await Promise.all(recipientIds.map(uid => queryRows('devices', [queryEqual('user_id', uid)], 50)));
+        for (let index = 0; index < recipientIds.length; index++) for (const row of registeredRecipients[index]) allowedRecipientDevices.add(recipientIds[index] + ':' + String(row.device_id));
       }
       const now = new Date().toISOString();
       let saved = 0;
       for (const packet of packets) {
-        if (!recipientIds.includes(packet.userId) || !validId(packet.deviceId) || typeof packet.ciphertext !== 'string' || typeof packet.nonce !== 'string') continue;
+        if (!recipientIds.includes(packet.userId) || !validId(packet.deviceId) || !allowedRecipientDevices.has(packet.userId + ':' + packet.deviceId) || typeof packet.ciphertext !== 'string' || typeof packet.nonce !== 'string') continue;
         const rowId = await stableId(`${messageId}:${packet.userId}:${packet.deviceId}`);
         await createRow('messages', rowId, {
           message_id: messageId, sender_id: user.uid, recipient_id: packet.userId,
@@ -694,7 +698,7 @@ const routes: Record<string, Array<(ctx: any) => Promise<Response>>> = {
       if (conversationId.startsWith('group_')) {
         const groupId = conversationId.slice(6);
         const member = await queryRows('group_members', [
-          queryEqual('group_id', groupId), queryEqual('user_id', user.uid), queryEqual('active', true),
+          queryEqual('group_id', groupId), queryEqual('user_id', user.uid), queryEqual('device_id', deviceId), queryEqual('active', true),
         ], 1);
         if (!member.length) return responseError('Not a group member.', 403);
       }
