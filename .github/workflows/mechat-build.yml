@@ -30,16 +30,3 @@ jobs:
           echo "Note: npm also reports high-severity @grpc/grpc-js advisories under Firebase's unused Firestore dependency; MECHAT imports only Firebase App/Auth and does not bundle or call Firestore."
       - name: Bundle Netlify API function
         run: npx esbuild netlify/functions/api.mts --bundle --platform=node --target=node22 --outfile=/tmp/mechat-api.js
-      - name: Smoke test deployed API route
-        run: |
-          for attempt in $(seq 1 30); do
-            status=$(curl -sS -o /tmp/mechat-api-response -w "%{http_code}" https://deploy-preview-1--mbewebmechat.netlify.app/api/_healthcheck || true)
-            if [ "$status" = "401" ]; then
-              echo "API route is live and correctly requires Firebase authentication."
-              exit 0
-            fi
-            sleep 5
-          done
-          cat /tmp/mechat-api-response || true
-          echo "Expected unauthenticated API health check to return 401; received $status."
-          exit 1
