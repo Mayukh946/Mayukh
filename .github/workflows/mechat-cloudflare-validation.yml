@@ -1,0 +1,31 @@
+name: MECHAT Cloudflare validation
+
+on:
+  push:
+    branches:
+      - cloudflare-migration
+    paths:
+      - "mechat/**"
+      - ".github/workflows/mechat-cloudflare-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mechat
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build React application
+        run: npm run build
+      - name: Validate Worker bundle without deploying
+        run: npx wrangler deploy --dry-run
